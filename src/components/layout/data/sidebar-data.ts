@@ -23,25 +23,26 @@ import {
   RotateCcw,
   Boxes,
   AlertTriangle,
+  Wallet,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
     name: 'Admin',
-    email: 'admin@retailerp.com',
+    email: 'admin@desaprima.com',
     avatar: '/avatars/shadcn.jpg',
   },
   teams: [
     {
-      name: 'Retail ERP',
+      name: 'Desaprima ERP',
       logo: Store,
       plan: 'Enterprise',
     },
   ],
   navGroups: [
     {
-      title: 'Main',
+      title: '1. Kasir & Utama',
       items: [
         {
           title: 'Dashboard',
@@ -49,131 +50,205 @@ export const sidebarData: SidebarData = {
           icon: LayoutDashboard,
         },
         {
-          title: 'Starter Kit',
-          url: '/starter-kit',
-          icon: ClipboardList,
-        },
-        {
-          title: 'POS',
+          title: 'POS (Point of Sale)',
           url: '/pos',
           icon: ShoppingCart,
         },
       ],
     },
     {
-      title: 'Operations',
+      title: '2. Produk & Inventori',
       items: [
         {
-          title: 'Inventory',
+          title: 'Manajemen Produk',
           icon: Package,
           items: [
             {
-              title: 'Products',
+              title: 'Daftar Produk',
               url: '/inventory/products',
               icon: Package,
             },
             {
-              title: 'Categories',
+              title: 'Kategori',
               url: '/inventory/categories',
               icon: Layers,
             },
             {
-              title: 'Units',
+              title: 'Satuan (Units)',
               url: '/inventory/units',
               icon: ClipboardList,
             },
             {
-              title: 'Stock Adjustments',
-              url: '/inventory/stock',
-              icon: ClipboardList,
+              title: 'Varian Produk (TBA)',
+              url: '#',
+              icon: GitBranch,
             },
             {
-              title: 'Stock Movements',
+              title: 'Paket / Bundling (TBA)',
+              url: '#',
+              icon: Boxes,
+            },
+          ],
+        },
+        {
+          title: 'Manajemen Inventori',
+          icon: Warehouse,
+          items: [
+            {
+              title: 'Pergerakan Stok',
               url: '/inventory/movements',
               icon: ClipboardList,
             },
             {
-              title: 'Warehouses',
+              title: 'Penyesuaian Stok',
+              url: '/inventory/stock',
+              icon: ClipboardList,
+            },
+            {
+              title: 'Gudang & Lokasi',
               url: '/inventory/warehouses',
               icon: Warehouse,
             },
             {
-              title: 'Bulk Products',
-              url: '/inventory/bulk-products',
-              icon: Boxes,
-            },
-            {
-              title: 'Rejected Items',
+              title: 'Barang Expired/Rusak',
               url: '/inventory/rejected',
               icon: AlertTriangle,
             },
-          ],
-        },
-        {
-          title: 'Sales',
-          icon: ShoppingCart,
-          items: [
             {
-              title: 'New Order',
-              url: '/sales/orders/create',
-              icon: ShoppingCart,
-            },
-            {
-              title: 'Pending Orders',
-              url: '/sales/orders',
-              icon: ClipboardList,
-            },
-            {
-              title: 'Transactions',
-              url: '/transactions',
-              icon: FileText,
-            },
-            {
-              title: 'Customers',
-              url: '/customers',
-              icon: Users,
-            },
-            {
-              title: 'Returns',
-              url: '/returns',
-              icon: RotateCcw,
-            },
-          ],
-        },
-        {
-          title: 'Purchasing',
-          icon: ShoppingBag,
-          items: [
-            {
-              title: 'Suppliers',
-              url: '/purchasing/suppliers',
+              title: 'Transfer Gudang (TBA)',
+              url: '#',
               icon: Truck,
-            },
-            {
-              title: 'Purchase Orders',
-              url: '/purchasing/orders',
-              icon: FileCheck,
-            },
-          ],
-        },
-        {
-          title: 'Reports',
-          icon: BarChart3,
-          items: [
-            {
-              title: 'Sales Report',
-              url: '/reports/sales',
-              icon: BarChart3,
             },
           ],
         },
       ],
     },
     {
-      title: 'Finance',
+      title: '3. Transaksi & Pengiriman',
       items: [
         {
-          title: 'Accounting',
+          title: 'Penjualan',
+          icon: ShoppingCart,
+          items: [
+            {
+              title: 'Semua Transaksi',
+              url: '/transactions',
+              icon: FileText,
+            },
+            {
+              title: 'Pesanan Online',
+              url: '/sales/orders',
+              icon: ClipboardList,
+            },
+            {
+              title: 'Retur Penjualan',
+              url: '/returns',
+              icon: RotateCcw,
+            },
+            {
+              title: 'Piutang Kasbon (TBA)',
+              url: '#',
+              icon: BookOpen,
+            },
+          ],
+        },
+        {
+          title: 'Pengiriman',
+          icon: Truck,
+          items: [
+            {
+              title: 'Data Kurir',
+              url: '/settings/couriers',
+              icon: Truck,
+            },
+            {
+              title: 'Tracking Resi (TBA)',
+              url: '#',
+              icon: Truck,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: '4. Pembelian & Supplier',
+      items: [
+        {
+          title: 'Purchasing',
+          icon: ShoppingBag,
+          items: [
+            {
+              title: 'Purchase Orders (PO)',
+              url: '/purchasing/orders',
+              icon: FileCheck,
+            },
+            {
+              title: 'Penerimaan Barang (TBA)',
+              url: '#',
+              icon: ClipboardList,
+            },
+          ],
+        },
+        {
+          title: 'Supplier',
+          icon: Truck,
+          items: [
+            {
+              title: 'Data Supplier',
+              url: '/purchasing/suppliers',
+              icon: Truck,
+            },
+            {
+              title: 'Hutang Dagang (TBA)',
+              url: '#',
+              icon: Calculator,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: '5. Relasi & Pegawai',
+      items: [
+        {
+          title: 'Pelanggan (CRM)',
+          icon: Users,
+          items: [
+            {
+              title: 'Data Pelanggan',
+              url: '/customers',
+              icon: Users,
+            },
+            {
+              title: 'Program Loyalitas (TBA)',
+              url: '#',
+              icon: Palette,
+            },
+          ],
+        },
+        {
+          title: 'Karyawan (SDM)',
+          icon: UserCog,
+          items: [
+            {
+              title: 'Data Karyawan & Akses',
+              url: '#',
+              icon: Users,
+            },
+            {
+              title: 'Shift Kasir (TBA)',
+              url: '#',
+              icon: ClipboardList,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: '6. Akuntansi & Laporan',
+      items: [
+        {
+          title: 'Keuangan',
           icon: Calculator,
           items: [
             {
@@ -182,65 +257,81 @@ export const sidebarData: SidebarData = {
               icon: BookOpen,
             },
             {
-              title: 'Journal Entries',
+              title: 'Jurnal Umum',
               url: '/accounting/journals',
               icon: FileText,
             },
             {
-              title: 'Reports',
-              url: '/accounting/reports',
-              icon: BarChart3,
+              title: 'Pengeluaran/Expenses (TBA)',
+              url: '#',
+              icon: Calculator,
+            },
+          ],
+        },
+        {
+          title: 'Laporan (Reports)',
+          icon: BarChart3,
+          items: [
+            {
+              title: 'Dashboard Laporan (Master)',
+              url: '/reports',
+              icon: LayoutDashboard,
+            },
+            {
+              title: 'Laporan Penjualan',
+              url: '/reports/sales',
+              icon: ShoppingCart,
+            },
+            {
+              title: 'Laba Rugi (P&L)',
+              url: '/reports/profit-loss',
+              icon: FileText,
+            },
+            {
+              title: 'Laporan Inventori',
+              url: '/reports/inventory',
+              icon: Package,
+            },
+            {
+              title: 'Piutang Pelanggan',
+              url: '/reports/receivable',
+              icon: Wallet,
+            },
+            {
+              title: 'Hutang Usaha',
+              url: '/reports/payable',
+              icon: Calculator,
+            },
+            {
+              title: 'Pengiriman',
+              url: '/reports/shipping',
+              icon: Truck,
             },
           ],
         },
       ],
     },
     {
-      title: 'System',
+      title: '7. Sistem',
       items: [
         {
-          title: 'Settings',
+          title: 'Pengaturan',
           icon: Settings,
           items: [
             {
-              title: 'Company',
+              title: 'Profil Perusahaan',
               url: '/settings/company',
               icon: Building2,
             },
             {
-              title: 'Branches',
+              title: 'Cabang / Branch',
               url: '/settings/branches',
               icon: GitBranch,
             },
             {
-              title: 'Users',
-              url: '/settings/users',
-              icon: Users,
-            },
-            {
-              title: 'Profile',
-              url: '/settings',
-              icon: UserCog,
-            },
-            {
-              title: 'Notifications',
+              title: 'Notifikasi',
               url: '/settings/notifications',
               icon: Bell,
-            },
-            {
-              title: 'Appearance',
-              url: '/settings/appearance',
-              icon: Palette,
-            },
-            {
-              title: 'Appearance',
-              url: '/settings/appearance',
-              icon: Palette,
-            },
-            {
-              title: 'Couriers',
-              url: '/settings/couriers',
-              icon: Truck,
             },
           ],
         },

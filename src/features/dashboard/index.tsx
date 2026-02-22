@@ -14,6 +14,7 @@ import { TopNav } from '@/components/layout/top-nav'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { PageHeaderHeading, PageHeaderTitle } from '@/components/layout/page'
 import { Analytics } from './components/analytics'
 import { Overview } from './components/overview'
 import { RecentSales } from './components/recent-sales'
@@ -22,7 +23,7 @@ export function Dashboard() {
   return (
     <>
       {/* ===== Top Heading ===== */}
-      <Header>
+      <Header fixed>
         <TopNav links={topNav} />
         <div className='ms-auto flex items-center space-x-4'>
           <Search />
@@ -35,7 +36,9 @@ export function Dashboard() {
       {/* ===== Main ===== */}
       <Main>
         <div className='mb-2 flex items-center justify-between space-y-2'>
-          <h1 className='text-2xl font-bold tracking-tight'>Dashboard</h1>
+          <PageHeaderHeading>
+            <PageHeaderTitle>Dashboard</PageHeaderTitle>
+          </PageHeaderHeading>
           <div className='flex items-center space-x-2'>
             <Button>Download</Button>
           </div>

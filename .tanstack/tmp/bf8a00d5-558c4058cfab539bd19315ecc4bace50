@@ -1,0 +1,11 @@
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute(
+  '/_authenticated/reports/components/shipment-drawer',
+)({
+  component: RouteComponent,
+})
+
+function RouteComponent() {
+  return <div>Hello "/_authenticated/reports/components/shipment-drawer"!</div>
+}

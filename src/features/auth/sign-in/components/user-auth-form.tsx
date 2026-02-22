@@ -61,6 +61,7 @@ export function UserAuthForm({
 
         // Mock successful authentication with expiry computed at success time
         const mockUser = {
+          id: '123e4567-e89b-12d3-a456-426614174000',
           accountNo: 'ACC001',
           email: data.email,
           role: ['user'],
@@ -124,6 +125,17 @@ export function UserAuthForm({
           {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
           Sign in
         </Button>
+        {import.meta.env.DEV && (
+          <Button 
+            className='mt-2 bg-green-600 hover:bg-green-700 text-white' 
+            type='button' 
+            onClick={() => onSubmit({ email: 'admin@retailerp.com', password: 'password123' })}
+            disabled={isLoading}
+          >
+            {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
+            Auto Login (Dev Mode)
+          </Button>
+        )}
 
         <div className='relative my-2'>
           <div className='absolute inset-0 flex items-center'>

@@ -15,7 +15,7 @@ export function Toaster({ ...props }: ToasterProps) {
           '--normal-border': 'var(--border)',
         } as React.CSSProperties
       }
-      position="bottom-right"
+      position="top-center"
       {...props}
     />
   )

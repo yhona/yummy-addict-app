@@ -1,0 +1,44 @@
+# Project Context & Rules
+
+## 1. Technology Stack
+- **Runtime**: Bun (Backend), Node/Bun (Frontend Build)
+- **Backend Framework**: Hono
+- **Database**: PostgreSQL with Drizzle ORM
+- **Frontend**: React 19, TypeScript, Vite 7
+- **State Management**: Zustand, TanStack Query (Server State)
+- **Routing**: TanStack Router
+
+## 2. Architecture & File Structure
+- **Feature-Based**: Code should be organized by feature in `src/features/[feature-name]/`.
+  - `api/`: React Query hooks (`useProducts`, `useCreateProduct`)
+  - `components/`: Feature-specific UI components
+  - `schema/`: Zod schemas for validation
+  - `types/`: TypeScript interfaces/types
+- **Routes**: File-based routing in `src/routes/_authenticated/...`.
+  - Use `$id.index.tsx` for details, `$id.edit.tsx` for editing.
+
+## 3. Coding Standards
+
+### Data Fetching & Mutations
+- **API Client**: Always use `@/lib/api-client` wrapper.
+- **Hooks**: Encapsulate API calls in custom hooks within `features/[feature]/api/`.
+- **Invalidation**: Always invalidate relevant query keys after mutations (`onSuccess`).
+
+### Forms & Validation
+- **Library**: React Hook Form
+- **Validation**: Zod (via `@hookform/resolvers/zod`).
+- **Schema**: Define schemas in `schema/` directory. Backend and Frontend schemas should be aligned.
+
+### UI/UX & Feedback (CRITICAL)
+- **Toast Notifications**: MANDATORY for all async actions (Create, Update, Delete).
+  - Use `sonner` library: `toast.success('Created successfully')` or `toast.error('Failed to create')`.
+  - Provide meaningful error messages from catch blocks.
+- **Loading States**: Explicitly handle `isLoading` or `isPending`. Disable buttons and show text/spinners during submission.
+
+## 4. Backend Guidelines
+- **Validation**: Validate request bodies/params using Zod.
+- **Error Handling**: Return structured JSON errors (`{ error: string }`).
+- **Static Files**: Serve uploads from `uploads/` directory.
+
+## 5. Branching/Git
+- Keep commits atomic.
