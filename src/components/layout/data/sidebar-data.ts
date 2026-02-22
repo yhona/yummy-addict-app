@@ -105,6 +105,11 @@ export const sidebarData: SidebarData = {
               icon: ClipboardList,
             },
             {
+              title: 'Stock Opname',
+              url: '/inventory/opname',
+              icon: ClipboardList,
+            },
+            {
               title: 'Gudang & Lokasi',
               url: '/inventory/warehouses',
               icon: Warehouse,
@@ -115,8 +120,8 @@ export const sidebarData: SidebarData = {
               icon: AlertTriangle,
             },
             {
-              title: 'Transfer Gudang (TBA)',
-              url: '#',
+              title: 'Transfer Gudang',
+              url: '/inventory/transfer',
               icon: Truck,
             },
           ],

@@ -471,3 +471,54 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   }),
 }))
 
+// ──────────────────────────────────────────────
+// Stock Opname (Physical Stock Count)
+// ──────────────────────────────────────────────
+
+export const stockOpname = pgTable('stock_opname', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  number: varchar('number', { length: 50 }).notNull().unique(),
+  warehouseId: uuid('warehouse_id').notNull().references(() => warehouses.id),
+  status: varchar('status', { length: 20 }).notNull().default('draft'),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  finalizedAt: timestamp('finalized_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const stockOpnameRelations = relations(stockOpname, ({ one, many }) => ({
+  warehouse: one(warehouses, {
+    fields: [stockOpname.warehouseId],
+    references: [warehouses.id],
+  }),
+  createdByUser: one(users, {
+    fields: [stockOpname.createdBy],
+    references: [users.id],
+  }),
+  items: many(stockOpnameItems),
+}))
+
+export const stockOpnameItems = pgTable('stock_opname_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  opnameId: uuid('opname_id').notNull().references(() => stockOpname.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id),
+  systemQty: integer('system_qty').notNull().default(0),
+  physicalQty: integer('physical_qty'),
+  difference: integer('difference'),
+  notes: text('notes'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const stockOpnameItemsRelations = relations(stockOpnameItems, ({ one }) => ({
+  opname: one(stockOpname, {
+    fields: [stockOpnameItems.opnameId],
+    references: [stockOpname.id],
+  }),
+  product: one(products, {
+    fields: [stockOpnameItems.productId],
+    references: [products.id],
+  }),
+}))
+
+

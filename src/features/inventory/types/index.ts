@@ -103,3 +103,59 @@ export interface ProductFilters {
   status?: 'all' | 'active' | 'inactive'
   stockStatus?: 'all' | 'low' | 'out' | 'available'
 }
+
+// ──────────────────────────────────────────────
+// Stock Opname Types
+// ──────────────────────────────────────────────
+
+export interface OpnameSession {
+  id: string
+  number: string
+  warehouseId: string
+  warehouseName: string
+  status: 'draft' | 'counting' | 'finalized'
+  totalItems: number
+  countedItems: number
+  itemsWithDifference: number
+  notes?: string
+  createdAt: string
+  finalizedAt?: string
+}
+
+export interface OpnameItem {
+  id: string
+  opnameId: string
+  productId: string
+  productSku: string
+  productName: string
+  unitName?: string
+  systemQty: number
+  physicalQty: number | null
+  difference: number | null
+  notes?: string
+  updatedAt: string
+}
+
+export interface OpnameSummary {
+  adjustedItems: number
+  totalAdded: number
+  totalSubtracted: number
+}
+
+// ──────────────────────────────────────────────
+// Transfer Types
+// ──────────────────────────────────────────────
+
+export interface TransferRecord {
+  referenceNumber: string
+  date: string
+  productId: string
+  productSku: string
+  productName: string
+  fromWarehouseId: string
+  fromWarehouseName: string
+  toWarehouseId: string
+  toWarehouseName: string
+  quantity: number
+  notes?: string
+}

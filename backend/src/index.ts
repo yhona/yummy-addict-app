@@ -21,6 +21,7 @@ import { ordersRoutes } from './routes/orders'
 import { mcpRoutes } from './routes/mcp'
 import { chatRoutes } from './routes/chat'
 import { couriersRoutes } from './routes/couriers'
+import { opnameRoutes } from './routes/opname'
 import { serveStatic } from 'hono/bun'
 
 const app = new Hono()
@@ -57,6 +58,7 @@ api.route('/orders', ordersRoutes)
 api.route('/mcp', mcpRoutes)
 api.route('/chat', chatRoutes)
 api.route('/couriers', couriersRoutes)
+api.route('/opname', opnameRoutes)
 
 app.route('/api', api)
 
