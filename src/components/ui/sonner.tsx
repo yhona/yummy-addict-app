@@ -7,7 +7,7 @@ export function Toaster({ ...props }: ToasterProps) {
   return (
     <Sonner
       theme={theme as ToasterProps['theme']}
-      className='toaster group [&_div[data-content]]:w-full'
+      className="toaster group [&_div[data-content]]:w-full"
       style={
         {
           '--normal-bg': 'var(--popover)',
@@ -15,6 +15,7 @@ export function Toaster({ ...props }: ToasterProps) {
           '--normal-border': 'var(--border)',
         } as React.CSSProperties
       }
+      position="bottom-right"
       {...props}
     />
   )
