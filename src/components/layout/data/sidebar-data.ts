@@ -1,56 +1,47 @@
 import {
-  Construction,
   LayoutDashboard,
-  Monitor,
-  Bug,
-  ListTodo,
-  FileX,
-  HelpCircle,
-  Lock,
-  Bell,
+  ShoppingCart,
   Package,
-  Palette,
-  ServerOff,
+  Layers,
+  Warehouse,
+  ClipboardList,
+  ShoppingBag,
+  Truck,
+  FileCheck,
+  Calculator,
+  BookOpen,
+  FileText,
+  BarChart3,
   Settings,
-  Wrench,
-  UserCog,
-  UserX,
+  Building2,
+  GitBranch,
   Users,
-  MessagesSquare,
-  ShieldCheck,
-  AudioWaveform,
-  Command,
-  GalleryVerticalEnd,
+  UserCog,
+  Bell,
+  Palette,
+  Store,
+  RotateCcw,
+  Boxes,
+  AlertTriangle,
 } from 'lucide-react'
-import { ClerkLogo } from '@/assets/clerk-logo'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'satnaing',
-    email: 'satnaingdev@gmail.com',
+    name: 'Admin',
+    email: 'admin@retailerp.com',
     avatar: '/avatars/shadcn.jpg',
   },
   teams: [
     {
-      name: 'Shadcn Admin',
-      logo: Command,
-      plan: 'Vite + ShadcnUI',
-    },
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
+      name: 'Retail ERP',
+      logo: Store,
       plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
     },
   ],
   navGroups: [
     {
-      title: 'General',
+      title: 'Main',
       items: [
         {
           title: 'Dashboard',
@@ -58,129 +49,178 @@ export const sidebarData: SidebarData = {
           icon: LayoutDashboard,
         },
         {
-          title: 'Tasks',
-          url: '/tasks',
-          icon: ListTodo,
+          title: 'Starter Kit',
+          url: '/starter-kit',
+          icon: ClipboardList,
         },
         {
-          title: 'Apps',
-          url: '/apps',
-          icon: Package,
-        },
-        {
-          title: 'Chats',
-          url: '/chats',
-          badge: '3',
-          icon: MessagesSquare,
-        },
-        {
-          title: 'Users',
-          url: '/users',
-          icon: Users,
-        },
-        {
-          title: 'Secured by Clerk',
-          icon: ClerkLogo,
-          items: [
-            {
-              title: 'Sign In',
-              url: '/clerk/sign-in',
-            },
-            {
-              title: 'Sign Up',
-              url: '/clerk/sign-up',
-            },
-            {
-              title: 'User Management',
-              url: '/clerk/user-management',
-            },
-          ],
+          title: 'POS',
+          url: '/pos',
+          icon: ShoppingCart,
         },
       ],
     },
     {
-      title: 'Pages',
+      title: 'Operations',
       items: [
         {
-          title: 'Auth',
-          icon: ShieldCheck,
+          title: 'Inventory',
+          icon: Package,
           items: [
             {
-              title: 'Sign In',
-              url: '/sign-in',
+              title: 'Products',
+              url: '/inventory/products',
+              icon: Package,
             },
             {
-              title: 'Sign In (2 Col)',
-              url: '/sign-in-2',
+              title: 'Categories',
+              url: '/inventory/categories',
+              icon: Layers,
             },
             {
-              title: 'Sign Up',
-              url: '/sign-up',
+              title: 'Units',
+              url: '/inventory/units',
+              icon: ClipboardList,
             },
             {
-              title: 'Forgot Password',
-              url: '/forgot-password',
+              title: 'Stock Adjustments',
+              url: '/inventory/stock',
+              icon: ClipboardList,
             },
             {
-              title: 'OTP',
-              url: '/otp',
+              title: 'Stock Movements',
+              url: '/inventory/movements',
+              icon: ClipboardList,
+            },
+            {
+              title: 'Warehouses',
+              url: '/inventory/warehouses',
+              icon: Warehouse,
+            },
+            {
+              title: 'Bulk Products',
+              url: '/inventory/bulk-products',
+              icon: Boxes,
+            },
+            {
+              title: 'Rejected Items',
+              url: '/inventory/rejected',
+              icon: AlertTriangle,
             },
           ],
         },
         {
-          title: 'Errors',
-          icon: Bug,
+          title: 'Sales',
+          icon: ShoppingCart,
           items: [
             {
-              title: 'Unauthorized',
-              url: '/errors/unauthorized',
-              icon: Lock,
+              title: 'New Order',
+              url: '/sales/orders/create',
+              icon: ShoppingCart,
             },
             {
-              title: 'Forbidden',
-              url: '/errors/forbidden',
-              icon: UserX,
+              title: 'Pending Orders',
+              url: '/sales/orders',
+              icon: ClipboardList,
             },
             {
-              title: 'Not Found',
-              url: '/errors/not-found',
-              icon: FileX,
+              title: 'Transactions',
+              url: '/transactions',
+              icon: FileText,
             },
             {
-              title: 'Internal Server Error',
-              url: '/errors/internal-server-error',
-              icon: ServerOff,
+              title: 'Customers',
+              url: '/customers',
+              icon: Users,
             },
             {
-              title: 'Maintenance Error',
-              url: '/errors/maintenance-error',
-              icon: Construction,
+              title: 'Returns',
+              url: '/returns',
+              icon: RotateCcw,
+            },
+          ],
+        },
+        {
+          title: 'Purchasing',
+          icon: ShoppingBag,
+          items: [
+            {
+              title: 'Suppliers',
+              url: '/purchasing/suppliers',
+              icon: Truck,
+            },
+            {
+              title: 'Purchase Orders',
+              url: '/purchasing/orders',
+              icon: FileCheck,
+            },
+          ],
+        },
+        {
+          title: 'Reports',
+          icon: BarChart3,
+          items: [
+            {
+              title: 'Sales Report',
+              url: '/reports/sales',
+              icon: BarChart3,
             },
           ],
         },
       ],
     },
     {
-      title: 'Other',
+      title: 'Finance',
+      items: [
+        {
+          title: 'Accounting',
+          icon: Calculator,
+          items: [
+            {
+              title: 'Chart of Accounts',
+              url: '/accounting/coa',
+              icon: BookOpen,
+            },
+            {
+              title: 'Journal Entries',
+              url: '/accounting/journals',
+              icon: FileText,
+            },
+            {
+              title: 'Reports',
+              url: '/accounting/reports',
+              icon: BarChart3,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'System',
       items: [
         {
           title: 'Settings',
           icon: Settings,
           items: [
             {
+              title: 'Company',
+              url: '/settings/company',
+              icon: Building2,
+            },
+            {
+              title: 'Branches',
+              url: '/settings/branches',
+              icon: GitBranch,
+            },
+            {
+              title: 'Users',
+              url: '/settings/users',
+              icon: Users,
+            },
+            {
               title: 'Profile',
               url: '/settings',
               icon: UserCog,
-            },
-            {
-              title: 'Account',
-              url: '/settings/account',
-              icon: Wrench,
-            },
-            {
-              title: 'Appearance',
-              url: '/settings/appearance',
-              icon: Palette,
             },
             {
               title: 'Notifications',
@@ -188,16 +228,21 @@ export const sidebarData: SidebarData = {
               icon: Bell,
             },
             {
-              title: 'Display',
-              url: '/settings/display',
-              icon: Monitor,
+              title: 'Appearance',
+              url: '/settings/appearance',
+              icon: Palette,
+            },
+            {
+              title: 'Appearance',
+              url: '/settings/appearance',
+              icon: Palette,
+            },
+            {
+              title: 'Couriers',
+              url: '/settings/couriers',
+              icon: Truck,
             },
           ],
-        },
-        {
-          title: 'Help Center',
-          url: '/help-center',
-          icon: HelpCircle,
         },
       ],
     },
