@@ -1,3 +1,5 @@
+export { DataTable } from './data-table'
+export { DataTableDateRangeFilter } from './date-range-filter'
 export { DataTablePagination } from './pagination'
 export { DataTableColumnHeader } from './column-header'
 export { DataTableFacetedFilter } from './faceted-filter'

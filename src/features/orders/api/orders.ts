@@ -107,7 +107,12 @@ export const useOrders = (params?: OrdersParams) => {
   return useQuery({
     queryKey: orderKeys.list(params),
     queryFn: async () => {
-      const response = await api.get('/api/orders', { params: params as any })
+      const queryParams = params
+        ? Object.fromEntries(
+            Object.entries(params).filter(([, v]) => v !== undefined && v !== '')
+          ) as Record<string, string | number | boolean | undefined>
+        : undefined
+      const response = await api.get('/api/orders', queryParams)
       return response as {
         data: Order[]
         pagination: {
