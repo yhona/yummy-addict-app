@@ -72,6 +72,7 @@ import { Route as AuthenticatedSalesReturnsNewRouteImport } from './routes/_auth
 import { Route as AuthenticatedSalesOrdersCreateRouteImport } from './routes/_authenticated/sales/orders/create'
 import { Route as AuthenticatedPurchasingSuppliersIdRouteImport } from './routes/_authenticated/purchasing/suppliers/$id'
 import { Route as AuthenticatedPurchasingOrdersNewRouteImport } from './routes/_authenticated/purchasing/orders/new'
+import { Route as AuthenticatedPurchasingOrdersIdRouteImport } from './routes/_authenticated/purchasing/orders/$id'
 import { Route as AuthenticatedInventoryWarehousesWarehouseIdRouteImport } from './routes/_authenticated/inventory/warehouses/$warehouseId'
 import { Route as AuthenticatedInventoryTransferNewRouteImport } from './routes/_authenticated/inventory/transfer/new'
 import { Route as AuthenticatedInventoryProductsNewRouteImport } from './routes/_authenticated/inventory/products/new'
@@ -433,6 +434,12 @@ const AuthenticatedPurchasingOrdersNewRoute =
     path: '/purchasing/orders/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPurchasingOrdersIdRoute =
+  AuthenticatedPurchasingOrdersIdRouteImport.update({
+    id: '/purchasing/orders/$id',
+    path: '/purchasing/orders/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInventoryWarehousesWarehouseIdRoute =
   AuthenticatedInventoryWarehousesWarehouseIdRouteImport.update({
     id: '/warehouses/$warehouseId',
@@ -528,6 +535,7 @@ export interface FileRoutesByFullPath {
   '/inventory/products/new': typeof AuthenticatedInventoryProductsNewRoute
   '/inventory/transfer/new': typeof AuthenticatedInventoryTransferNewRoute
   '/inventory/warehouses/$warehouseId': typeof AuthenticatedInventoryWarehousesWarehouseIdRoute
+  '/purchasing/orders/$id': typeof AuthenticatedPurchasingOrdersIdRoute
   '/purchasing/orders/new': typeof AuthenticatedPurchasingOrdersNewRoute
   '/purchasing/suppliers/$id': typeof AuthenticatedPurchasingSuppliersIdRoute
   '/sales/orders/create': typeof AuthenticatedSalesOrdersCreateRoute
@@ -594,6 +602,7 @@ export interface FileRoutesByTo {
   '/inventory/products/new': typeof AuthenticatedInventoryProductsNewRoute
   '/inventory/transfer/new': typeof AuthenticatedInventoryTransferNewRoute
   '/inventory/warehouses/$warehouseId': typeof AuthenticatedInventoryWarehousesWarehouseIdRoute
+  '/purchasing/orders/$id': typeof AuthenticatedPurchasingOrdersIdRoute
   '/purchasing/orders/new': typeof AuthenticatedPurchasingOrdersNewRoute
   '/purchasing/suppliers/$id': typeof AuthenticatedPurchasingSuppliersIdRoute
   '/sales/orders/create': typeof AuthenticatedSalesOrdersCreateRoute
@@ -667,6 +676,7 @@ export interface FileRoutesById {
   '/_authenticated/inventory/products/new': typeof AuthenticatedInventoryProductsNewRoute
   '/_authenticated/inventory/transfer/new': typeof AuthenticatedInventoryTransferNewRoute
   '/_authenticated/inventory/warehouses/$warehouseId': typeof AuthenticatedInventoryWarehousesWarehouseIdRoute
+  '/_authenticated/purchasing/orders/$id': typeof AuthenticatedPurchasingOrdersIdRoute
   '/_authenticated/purchasing/orders/new': typeof AuthenticatedPurchasingOrdersNewRoute
   '/_authenticated/purchasing/suppliers/$id': typeof AuthenticatedPurchasingSuppliersIdRoute
   '/_authenticated/sales/orders/create': typeof AuthenticatedSalesOrdersCreateRoute
@@ -737,6 +747,7 @@ export interface FileRouteTypes {
     | '/inventory/products/new'
     | '/inventory/transfer/new'
     | '/inventory/warehouses/$warehouseId'
+    | '/purchasing/orders/$id'
     | '/purchasing/orders/new'
     | '/purchasing/suppliers/$id'
     | '/sales/orders/create'
@@ -803,6 +814,7 @@ export interface FileRouteTypes {
     | '/inventory/products/new'
     | '/inventory/transfer/new'
     | '/inventory/warehouses/$warehouseId'
+    | '/purchasing/orders/$id'
     | '/purchasing/orders/new'
     | '/purchasing/suppliers/$id'
     | '/sales/orders/create'
@@ -875,6 +887,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/products/new'
     | '/_authenticated/inventory/transfer/new'
     | '/_authenticated/inventory/warehouses/$warehouseId'
+    | '/_authenticated/purchasing/orders/$id'
     | '/_authenticated/purchasing/orders/new'
     | '/_authenticated/purchasing/suppliers/$id'
     | '/_authenticated/sales/orders/create'
@@ -1351,6 +1364,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPurchasingOrdersNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/purchasing/orders/$id': {
+      id: '/_authenticated/purchasing/orders/$id'
+      path: '/purchasing/orders/$id'
+      fullPath: '/purchasing/orders/$id'
+      preLoaderRoute: typeof AuthenticatedPurchasingOrdersIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inventory/warehouses/$warehouseId': {
       id: '/_authenticated/inventory/warehouses/$warehouseId'
       path: '/warehouses/$warehouseId'
@@ -1508,6 +1528,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReturnsIndexRoute: typeof AuthenticatedReturnsIndexRoute
   AuthenticatedStarterKitIndexRoute: typeof AuthenticatedStarterKitIndexRoute
   AuthenticatedTransactionsIndexRoute: typeof AuthenticatedTransactionsIndexRoute
+  AuthenticatedPurchasingOrdersIdRoute: typeof AuthenticatedPurchasingOrdersIdRoute
   AuthenticatedPurchasingOrdersNewRoute: typeof AuthenticatedPurchasingOrdersNewRoute
   AuthenticatedPurchasingSuppliersIdRoute: typeof AuthenticatedPurchasingSuppliersIdRoute
   AuthenticatedSalesOrdersCreateRoute: typeof AuthenticatedSalesOrdersCreateRoute
@@ -1541,6 +1562,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReturnsIndexRoute: AuthenticatedReturnsIndexRoute,
   AuthenticatedStarterKitIndexRoute: AuthenticatedStarterKitIndexRoute,
   AuthenticatedTransactionsIndexRoute: AuthenticatedTransactionsIndexRoute,
+  AuthenticatedPurchasingOrdersIdRoute: AuthenticatedPurchasingOrdersIdRoute,
   AuthenticatedPurchasingOrdersNewRoute: AuthenticatedPurchasingOrdersNewRoute,
   AuthenticatedPurchasingSuppliersIdRoute:
     AuthenticatedPurchasingSuppliersIdRoute,

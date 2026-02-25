@@ -232,18 +232,58 @@ export interface Purchase {
     supplier?: Supplier
     totalAmount: string
     status: 'ordered' | 'received' | 'cancelled'
+    paymentStatus: 'PAID' | 'UNPAID' | 'PARTIAL'
+    amountPaid: string
+    dueDate?: string
     notes?: string
     items?: PurchaseItem[]
+    createdAt: string
+    updatedAt: string
 }
 
 export interface CreatePurchaseRequest {
     supplierId: string
     notes?: string
+    dueDate?: string
     items: {
         productId: string
         quantity: number
         costPrice: number
     }[]
+}
+
+export interface PurchasePayment {
+    id: string
+    purchaseId: string
+    amount: string
+    paymentMethod: 'cash' | 'transfer' | 'giro'
+    date: string
+    notes?: string
+    createdAt: string
+}
+
+export interface PurchaseSummary {
+    totalOrdered: number
+    totalReceived: number
+    totalCancelled: number
+    totalOutstanding: string
+}
+
+export interface PurchasesResponse {
+    data: Purchase[]
+    summary: PurchaseSummary
+    pagination: {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+    }
+}
+
+export interface SupplierStats {
+    totalPurchases: number
+    totalAmount: string
+    outstanding: string
 }
 
 // Customers

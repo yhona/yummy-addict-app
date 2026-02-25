@@ -302,6 +302,7 @@ export const purchasesRelations = relations(purchases, ({ one, many }) => ({
     references: [suppliers.id],
   }),
   items: many(purchaseItems),
+  payments: many(purchasePayments),
 }))
 
 // Purchase Items
@@ -322,6 +323,29 @@ export const purchaseItemsRelations = relations(purchaseItems, ({ one }) => ({
   product: one(products, {
     fields: [purchaseItems.productId],
     references: [products.id],
+  }),
+}))
+
+// Purchase Payments (Tracking hutang supplier)
+export const purchasePayments = pgTable('purchase_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  purchaseId: uuid('purchase_id').notNull().references(() => purchases.id),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull().default('transfer'),
+  date: timestamp('date').notNull().defaultNow(),
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const purchasePaymentsRelations = relations(purchasePayments, ({ one }) => ({
+  purchase: one(purchases, {
+    fields: [purchasePayments.purchaseId],
+    references: [purchases.id],
+  }),
+  createdByUser: one(users, {
+    fields: [purchasePayments.createdBy],
+    references: [users.id],
   }),
 }))
 // Shifts

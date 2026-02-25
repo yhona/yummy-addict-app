@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier } from '@/features/purchasing/api'
 import { SupplierForm } from '@/features/purchasing/components/supplier-form'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Plus, MoreHorizontal, Pencil, Trash, FileText } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -112,46 +113,51 @@ function SuppliersPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {suppliersData?.data.map((supplier: any) => (
-                                    <TableRow key={supplier.id}>
+                                {(suppliersData as any)?.map?.((supplier: any) => (
+                                    <TableRow
+                                      key={supplier.id}
+                                      className="cursor-pointer hover:bg-muted/50"
+                                      onClick={() => navigate({ to: '/purchasing/suppliers/$id', params: { id: supplier.id } })}
+                                    >
                                         <TableCell className="font-mono text-xs">{supplier.code}</TableCell>
                                         <TableCell>
-                                            <div 
-                                                className="font-medium hover:underline cursor-pointer text-primary"
-                                                onClick={() => navigate({ to: `/purchasing/suppliers/${supplier.id}` })}
-                                            >
+                                            <div className="font-medium text-primary">
                                                 {supplier.name}
                                             </div>
                                         </TableCell>
-                                        <TableCell>{supplier.contactPerson}</TableCell>
-                                        <TableCell>{supplier.phone}</TableCell>
-                                        <TableCell>{supplier.isActive ? "Active" : "Inactive"}</TableCell>
+                                        <TableCell>{supplier.contactPerson || '—'}</TableCell>
+                                        <TableCell>{supplier.phone || '—'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={supplier.isActive ? 'default' : 'secondary'}>
+                                                {supplier.isActive ? 'Aktif' : 'Nonaktif'}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => navigate({ to: `/purchasing/suppliers/${supplier.id}` })}>
-                                                        <FileText className="mr-2 h-4 w-4" /> View Details
+                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate({ to: '/purchasing/suppliers/$id', params: { id: supplier.id } }) }}>
+                                                        <FileText className="mr-2 h-4 w-4" /> Lihat Detail
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => openEdit(supplier)}>
+                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(supplier) }}>
                                                         <Pencil className="mr-2 h-4 w-4" /> Edit
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => openDelete(supplier)} className="text-destructive focus:text-destructive">
-                                                        <Trash className="mr-2 h-4 w-4" /> Delete
+                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openDelete(supplier) }} className="text-destructive focus:text-destructive">
+                                                        <Trash className="mr-2 h-4 w-4" /> Hapus
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {suppliersData?.data.length === 0 && (
+                                {(suppliersData as any)?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center text-muted-foreground h-20">No suppliers found</TableCell>
+                                        <TableCell colSpan={6} className="text-center text-muted-foreground h-20">Belum ada data supplier</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

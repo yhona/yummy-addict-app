@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { purchases, purchaseItems, products, productStock, stockMovements, warehouses } from '../db/schema'
-import { eq, desc, and, sql } from 'drizzle-orm'
+import { purchases, purchaseItems, purchasePayments, products, productStock, stockMovements, warehouses, suppliers } from '../db/schema'
+import { eq, desc, and, sql, like, or, gte, lte, count } from 'drizzle-orm'
 import { z } from 'zod'
 
 const purchasesRoutes = new Hono()
@@ -9,6 +9,7 @@ const purchasesRoutes = new Hono()
 const createPurchaseSchema = z.object({
   supplierId: z.string().uuid(),
   notes: z.string().optional(),
+  dueDate: z.string().optional(),
   items: z.array(z.object({
     productId: z.string().uuid(),
     quantity: z.number().int().positive(),
@@ -16,26 +17,97 @@ const createPurchaseSchema = z.object({
   }))
 })
 
-// List Purchases
+// ==========================================
+// LIST PURCHASES (with filter & pagination)
+// ==========================================
 purchasesRoutes.get('/', async (c) => {
   try {
+    const page = Number(c.req.query('page') || '1')
+    const limit = Number(c.req.query('limit') || '20')
+    const search = c.req.query('search')
+    const status = c.req.query('status')
+    const paymentStatus = c.req.query('paymentStatus')
+    const supplierId = c.req.query('supplierId')
+    const dateFrom = c.req.query('dateFrom')
+    const dateTo = c.req.query('dateTo')
+
+    // Build WHERE conditions
+    const conditions = []
+    if (status) conditions.push(eq(purchases.status, status))
+    if (paymentStatus) conditions.push(eq(purchases.paymentStatus, paymentStatus))
+    if (supplierId) conditions.push(eq(purchases.supplierId, supplierId))
+    if (dateFrom) conditions.push(gte(purchases.date, new Date(dateFrom)))
+    if (dateTo) conditions.push(lte(purchases.date, new Date(dateTo + 'T23:59:59')))
+
+    // Search (PO number or supplier name)
+    if (search) {
+      const searchResults = await db.select({ id: suppliers.id })
+        .from(suppliers)
+        .where(like(suppliers.name, `%${search}%`))
+      const supplierIds = searchResults.map(s => s.id)
+
+      conditions.push(
+        or(
+          like(purchases.number, `%${search}%`),
+          ...(supplierIds.length > 0
+            ? supplierIds.map(sid => eq(purchases.supplierId, sid))
+            : [])
+        )!
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    // Data query with pagination
     const data = await db.query.purchases.findMany({
-        with: { 
-            supplier: true, 
-            items: { 
-                with: { product: true } 
-            } 
-        },
-        orderBy: [desc(purchases.createdAt)],
-        limit: 50
+      where: whereClause,
+      with: {
+        supplier: true,
+        items: { with: { product: true } }
+      },
+      orderBy: [desc(purchases.createdAt)],
+      limit,
+      offset: (page - 1) * limit,
     })
-    return c.json({ data })
+
+    // Total count for pagination
+    const [totalResult] = await db.select({ count: count() })
+      .from(purchases)
+      .where(whereClause)
+    const total = totalResult?.count || 0
+
+    // Summary counts
+    const [summaryResult] = await db.select({
+      totalOrdered: sql<number>`COUNT(*) FILTER (WHERE ${purchases.status} = 'ordered')`,
+      totalReceived: sql<number>`COUNT(*) FILTER (WHERE ${purchases.status} = 'received')`,
+      totalCancelled: sql<number>`COUNT(*) FILTER (WHERE ${purchases.status} = 'cancelled')`,
+      totalOutstanding: sql<string>`COALESCE(SUM(CAST(${purchases.totalAmount} AS DECIMAL) - CAST(${purchases.amountPaid} AS DECIMAL)) FILTER (WHERE ${purchases.paymentStatus} != 'PAID' AND ${purchases.status} != 'cancelled'), 0)`,
+    }).from(purchases)
+
+    return c.json({
+      data,
+      summary: {
+        totalOrdered: Number(summaryResult?.totalOrdered || 0),
+        totalReceived: Number(summaryResult?.totalReceived || 0),
+        totalCancelled: Number(summaryResult?.totalCancelled || 0),
+        totalOutstanding: String(summaryResult?.totalOutstanding || '0'),
+      },
+      pagination: {
+        page,
+        limit,
+        total: Number(total),
+        totalPages: Math.ceil(Number(total) / limit),
+      }
+    })
   } catch (error) {
+    console.error(error)
     return c.json({ error: 'Failed to fetch purchases' }, 500)
   }
 })
 
-// Get One
+// ==========================================
+// GET ONE PURCHASE
+// ==========================================
 purchasesRoutes.get('/:id', async (c) => {
     const id = c.req.param('id')
     const data = await db.query.purchases.findFirst({ 
@@ -51,7 +123,9 @@ purchasesRoutes.get('/:id', async (c) => {
     return c.json(data)
 })
 
-// Create Purchase Order
+// ==========================================
+// CREATE PURCHASE ORDER
+// ==========================================
 purchasesRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json()
@@ -64,7 +138,6 @@ purchasesRoutes.post('/', async (c) => {
     const data = result.data
     
     const transaction = await db.transaction(async (tx) => {
-       // Calculate total
        const totalAmount = data.items.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0)
        
        const number = `PO-${Date.now()}`
@@ -74,6 +147,9 @@ purchasesRoutes.post('/', async (c) => {
            supplierId: data.supplierId,
            totalAmount: String(totalAmount),
            status: 'ordered',
+           paymentStatus: 'UNPAID',
+           amountPaid: '0',
+           dueDate: data.dueDate ? new Date(data.dueDate) : null,
            notes: data.notes
        }).returning()
        
@@ -97,7 +173,9 @@ purchasesRoutes.post('/', async (c) => {
   }
 })
 
-// Receive Purchase (Complete)
+// ==========================================
+// RECEIVE PURCHASE (mark as received + update stock)
+// ==========================================
 purchasesRoutes.post('/:id/receive', async (c) => {
     const id = c.req.param('id')
     
@@ -111,24 +189,19 @@ purchasesRoutes.post('/:id/receive', async (c) => {
              if (!purchase) throw new Error("Purchase not found")
              if (purchase.status !== 'ordered') throw new Error(`Purchase status is ${purchase.status}, cannot receive`)
              
-             // Get Default Warehouse
              const defaultWarehouse = await tx.query.warehouses.findFirst({
                  where: eq(warehouses.isDefault, true)
              })
              
              if (!defaultWarehouse) throw new Error("No default warehouse configured for receiving")
              
-             // Update Status
              await tx.update(purchases).set({ status: 'received', updatedAt: new Date() }).where(eq(purchases.id, id))
              
-             // Process Items
              for (const item of purchase.items) {
-                 // 1. Update Product Cost Price (Latest Price Strategy)
                  await tx.update(products)
                     .set({ costPrice: item.costPrice, updatedAt: new Date() })
                     .where(eq(products.id, item.productId))
                  
-                 // 2. Update Stock
                  const currentStock = await tx.query.productStock.findFirst({
                      where: and(
                          eq(productStock.productId, item.productId),
@@ -148,7 +221,6 @@ purchasesRoutes.post('/:id/receive', async (c) => {
                      })
                  }
                  
-                 // 3. Stock Movement
                  await tx.insert(stockMovements).values({
                      productId: item.productId,
                      warehouseId: defaultWarehouse.id,
@@ -159,7 +231,6 @@ purchasesRoutes.post('/:id/receive', async (c) => {
                      quantityBefore: currentStock?.quantity || 0,
                      quantityChange: item.quantity,
                      quantityAfter: (currentStock?.quantity || 0) + item.quantity,
-                     // createdBy: c.get('user')?.id, // Optional - requires auth middleware
                      notes: `Received PO ${purchase.number}`
                  })
              }
@@ -173,6 +244,155 @@ purchasesRoutes.post('/:id/receive', async (c) => {
         console.error(error)
         return c.json({ error: (error as Error).message }, 400)
     }
+})
+
+// ==========================================
+// CANCEL PURCHASE ORDER
+// ==========================================
+purchasesRoutes.post('/:id/cancel', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const purchase = await db.query.purchases.findFirst({
+      where: eq(purchases.id, id)
+    })
+    
+    if (!purchase) return c.json({ error: 'Purchase not found' }, 404)
+    if (purchase.status !== 'ordered') {
+      return c.json({ error: `Cannot cancel PO with status '${purchase.status}'` }, 400)
+    }
+    
+    await db.update(purchases)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(purchases.id, id))
+    
+    return c.json({ message: 'Purchase cancelled successfully' })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to cancel purchase' }, 500)
+  }
+})
+
+// ==========================================
+// LIST PAYMENTS FOR A PURCHASE
+// ==========================================
+purchasesRoutes.get('/:id/payments', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const data = await db.select()
+      .from(purchasePayments)
+      .where(eq(purchasePayments.purchaseId, id))
+      .orderBy(desc(purchasePayments.date))
+    
+    return c.json(data)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch payments' }, 500)
+  }
+})
+
+// ==========================================
+// ADD PAYMENT TO A PURCHASE
+// ==========================================
+const addPaymentSchema = z.object({
+  amount: z.number().positive(),
+  paymentMethod: z.string().default('transfer'),
+  date: z.string(),
+  notes: z.string().optional(),
+})
+
+purchasesRoutes.post('/:id/payments', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const body = await c.req.json()
+    const result = addPaymentSchema.safeParse(body)
+    
+    if (!result.success) {
+      return c.json({ error: 'Validation error', details: result.error.flatten() }, 400)
+    }
+    
+    const data = result.data
+    
+    const payment = await db.transaction(async (tx) => {
+      // Fetch current purchase
+      const purchase = await tx.query.purchases.findFirst({
+        where: eq(purchases.id, id)
+      })
+      
+      if (!purchase) throw new Error('Purchase not found')
+      if (purchase.status !== 'received') throw new Error('Cannot pay before purchase is received')
+      
+      const currentPaid = Number(purchase.amountPaid) || 0
+      const totalAmount = Number(purchase.totalAmount) || 0
+      const remaining = totalAmount - currentPaid
+      
+      if (data.amount > remaining + 0.01) { // +0.01 for floating point tolerance
+        throw new Error(`Payment amount (${data.amount}) exceeds remaining balance (${remaining.toFixed(2)})`)
+      }
+      
+      // Insert payment record
+      const [newPayment] = await tx.insert(purchasePayments).values({
+        purchaseId: id,
+        amount: String(data.amount),
+        paymentMethod: data.paymentMethod,
+        date: new Date(data.date),
+        notes: data.notes || null,
+      }).returning()
+      
+      // Update purchase totals
+      const newAmountPaid = currentPaid + data.amount
+      let newPaymentStatus: string
+
+      if (newAmountPaid >= totalAmount) {
+        newPaymentStatus = 'PAID'
+      } else if (newAmountPaid > 0) {
+        newPaymentStatus = 'PARTIAL'
+      } else {
+        newPaymentStatus = 'UNPAID'
+      }
+      
+      await tx.update(purchases).set({
+        amountPaid: String(newAmountPaid),
+        paymentStatus: newPaymentStatus,
+        updatedAt: new Date(),
+      }).where(eq(purchases.id, id))
+      
+      return newPayment
+    })
+    
+    return c.json(payment, 201)
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: (error as Error).message }, 400)
+  }
+})
+
+// ==========================================
+// SUPPLIER STATS
+// ==========================================
+purchasesRoutes.get('/supplier/:supplierId/stats', async (c) => {
+  const supplierId = c.req.param('supplierId')
+  
+  try {
+    const [stats] = await db.select({
+      totalPurchases: count(),
+      totalAmount: sql<string>`COALESCE(SUM(CAST(${purchases.totalAmount} AS DECIMAL)), 0)`,
+      outstanding: sql<string>`COALESCE(SUM(CAST(${purchases.totalAmount} AS DECIMAL) - CAST(${purchases.amountPaid} AS DECIMAL)) FILTER (WHERE ${purchases.paymentStatus} != 'PAID' AND ${purchases.status} != 'cancelled'), 0)`,
+    })
+    .from(purchases)
+    .where(eq(purchases.supplierId, supplierId))
+    
+    return c.json({
+      totalPurchases: Number(stats?.totalPurchases || 0),
+      totalAmount: String(stats?.totalAmount || '0'),
+      outstanding: String(stats?.outstanding || '0'),
+    })
+  } catch (error) {
+    console.error(error)
+    return c.json({ error: 'Failed to fetch supplier stats' }, 500)
+  }
 })
 
 export { purchasesRoutes }

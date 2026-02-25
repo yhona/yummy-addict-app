@@ -183,13 +183,13 @@ export const sidebarData: SidebarData = {
           icon: ShoppingBag,
           items: [
             {
-              title: 'Purchase Orders (PO)',
+              title: 'Daftar PO',
               url: '/purchasing/orders',
               icon: FileCheck,
             },
             {
-              title: 'Penerimaan Barang (TBA)',
-              url: '#',
+              title: 'Buat PO Baru',
+              url: '/purchasing/orders/new',
               icon: ClipboardList,
             },
           ],
@@ -202,11 +202,6 @@ export const sidebarData: SidebarData = {
               title: 'Data Supplier',
               url: '/purchasing/suppliers',
               icon: Truck,
-            },
-            {
-              title: 'Hutang Dagang (TBA)',
-              url: '#',
-              icon: Calculator,
             },
           ],
         },
