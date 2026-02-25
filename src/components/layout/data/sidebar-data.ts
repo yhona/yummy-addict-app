@@ -30,12 +30,12 @@ import { type SidebarData } from '../types'
 export const sidebarData: SidebarData = {
   user: {
     name: 'Admin',
-    email: 'admin@desaprima.com',
+    email: 'admin@yummyaddict.id',
     avatar: '/avatars/shadcn.jpg',
   },
   teams: [
     {
-      name: 'Desaprima ERP',
+      name: 'Yummy Addict',
       logo: Store,
       plan: 'Enterprise',
     },

@@ -50,7 +50,7 @@ function SalesReportPage() {
   const pdfConfig = {
     title: 'Laporan Penjualan (Top Produk)',
     subtitle: `Periode: ${search.startDate ? format(new Date(search.startDate), 'dd MMM yyyy') : '-'} s/d ${search.endDate ? format(new Date(search.endDate), 'dd MMM yyyy') : '-'}`,
-    company_name: 'Desaprima ERP',
+    company_name: 'Yummy Addict',
     columns: exportColumns.map(c => ({ header: c.label, dataKey: c.key })),
     summary: [
       { label: 'Total Penjualan Bersih', value: formatCurrency(salesData?.summary.totalSales || 0) },

@@ -76,7 +76,7 @@ export function InventoryStockTab() {
   const pdfConfig = {
     title: 'Laporan Ketersediaan Stok',
     subtitle: `Dicetak Tanggal: ${format(new Date(), 'dd MMMM yyyy')}`,
-    company_name: 'Desaprima ERP',
+    company_name: 'Yummy Addict',
     columns: exportColumns.map(c => ({ header: c.label, dataKey: c.key })),
   }
 

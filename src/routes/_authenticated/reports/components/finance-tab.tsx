@@ -49,7 +49,7 @@ export function FinanceTab({ startDate, endDate }: FinanceTabProps) {
   const pdfConfig = {
     title: 'Laporan Laba Rugi (P&L)',
     subtitle: `Periode: ${report?.period || '-'}`,
-    company_name: 'Desaprima ERP',
+    company_name: 'Yummy Addict',
     columns: exportColumns.map(c => ({ header: c.label, dataKey: c.key })),
     summary: [
       { label: 'Margin Laba Kotor', value: `${(report?.gross_margin_percent || 0).toFixed(1)}%` },
