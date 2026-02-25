@@ -30,6 +30,7 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as AuthenticatedInventoryRouteRouteImport } from './routes/_authenticated/inventory/route'
 import { Route as AuthenticatedTransactionsIndexRouteImport } from './routes/_authenticated/transactions/index'
 import { Route as AuthenticatedStarterKitIndexRouteImport } from './routes/_authenticated/starter-kit/index'
+import { Route as AuthenticatedShippingIndexRouteImport } from './routes/_authenticated/shipping/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedReturnsIndexRouteImport } from './routes/_authenticated/returns/index'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports/index'
@@ -37,6 +38,8 @@ import { Route as AuthenticatedPosIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCustomersIndexRouteImport } from './routes/_authenticated/customers/index'
 import { Route as ClerkauthSignUpRouteImport } from './routes/clerk/(auth)/sign-up'
 import { Route as ClerkauthSignInRouteImport } from './routes/clerk/(auth)/sign-in'
+import { Route as AuthenticatedShippingBulkUpdateRouteImport } from './routes/_authenticated/shipping/bulk-update'
+import { Route as AuthenticatedShippingIdRouteImport } from './routes/_authenticated/shipping/$id'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
@@ -187,6 +190,12 @@ const AuthenticatedStarterKitIndexRoute =
     path: '/starter-kit/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedShippingIndexRoute =
+  AuthenticatedShippingIndexRouteImport.update({
+    id: '/shipping/',
+    path: '/shipping/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/',
@@ -225,6 +234,17 @@ const ClerkauthSignInRoute = ClerkauthSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
   getParentRoute: () => ClerkauthRouteRoute,
+} as any)
+const AuthenticatedShippingBulkUpdateRoute =
+  AuthenticatedShippingBulkUpdateRouteImport.update({
+    id: '/shipping/bulk-update',
+    path: '/shipping/bulk-update',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedShippingIdRoute = AuthenticatedShippingIdRouteImport.update({
+  id: '/shipping/$id',
+  path: '/shipping/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsNotificationsRoute =
   AuthenticatedSettingsNotificationsRouteImport.update({
@@ -522,12 +542,15 @@ export interface FileRoutesByFullPath {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/shipping/$id': typeof AuthenticatedShippingIdRoute
+  '/shipping/bulk-update': typeof AuthenticatedShippingBulkUpdateRoute
   '/clerk/sign-in': typeof ClerkauthSignInRoute
   '/clerk/sign-up': typeof ClerkauthSignUpRoute
   '/customers': typeof AuthenticatedCustomersIndexRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/returns': typeof AuthenticatedReturnsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/shipping': typeof AuthenticatedShippingIndexRoute
   '/starter-kit': typeof AuthenticatedStarterKitIndexRoute
   '/transactions': typeof AuthenticatedTransactionsIndexRoute
   '/inventory/opname/$id': typeof AuthenticatedInventoryOpnameIdRoute
@@ -589,12 +612,15 @@ export interface FileRoutesByTo {
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/shipping/$id': typeof AuthenticatedShippingIdRoute
+  '/shipping/bulk-update': typeof AuthenticatedShippingBulkUpdateRoute
   '/clerk/sign-in': typeof ClerkauthSignInRoute
   '/clerk/sign-up': typeof ClerkauthSignUpRoute
   '/customers': typeof AuthenticatedCustomersIndexRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/returns': typeof AuthenticatedReturnsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/shipping': typeof AuthenticatedShippingIndexRoute
   '/starter-kit': typeof AuthenticatedStarterKitIndexRoute
   '/transactions': typeof AuthenticatedTransactionsIndexRoute
   '/inventory/opname/$id': typeof AuthenticatedInventoryOpnameIdRoute
@@ -662,6 +688,8 @@ export interface FileRoutesById {
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/shipping/$id': typeof AuthenticatedShippingIdRoute
+  '/_authenticated/shipping/bulk-update': typeof AuthenticatedShippingBulkUpdateRoute
   '/clerk/(auth)/sign-in': typeof ClerkauthSignInRoute
   '/clerk/(auth)/sign-up': typeof ClerkauthSignUpRoute
   '/_authenticated/customers/': typeof AuthenticatedCustomersIndexRoute
@@ -669,6 +697,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/returns/': typeof AuthenticatedReturnsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/shipping/': typeof AuthenticatedShippingIndexRoute
   '/_authenticated/starter-kit/': typeof AuthenticatedStarterKitIndexRoute
   '/_authenticated/transactions/': typeof AuthenticatedTransactionsIndexRoute
   '/_authenticated/inventory/opname/$id': typeof AuthenticatedInventoryOpnameIdRoute
@@ -734,12 +763,15 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/shipping/$id'
+    | '/shipping/bulk-update'
     | '/clerk/sign-in'
     | '/clerk/sign-up'
     | '/customers'
     | '/reports'
     | '/returns'
     | '/settings/'
+    | '/shipping'
     | '/starter-kit'
     | '/transactions'
     | '/inventory/opname/$id'
@@ -801,12 +833,15 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/display'
     | '/settings/notifications'
+    | '/shipping/$id'
+    | '/shipping/bulk-update'
     | '/clerk/sign-in'
     | '/clerk/sign-up'
     | '/customers'
     | '/reports'
     | '/returns'
     | '/settings'
+    | '/shipping'
     | '/starter-kit'
     | '/transactions'
     | '/inventory/opname/$id'
@@ -873,6 +908,8 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
     | '/_authenticated/settings/notifications'
+    | '/_authenticated/shipping/$id'
+    | '/_authenticated/shipping/bulk-update'
     | '/clerk/(auth)/sign-in'
     | '/clerk/(auth)/sign-up'
     | '/_authenticated/customers/'
@@ -880,6 +917,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/'
     | '/_authenticated/returns/'
     | '/_authenticated/settings/'
+    | '/_authenticated/shipping/'
     | '/_authenticated/starter-kit/'
     | '/_authenticated/transactions/'
     | '/_authenticated/inventory/opname/$id'
@@ -1070,6 +1108,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStarterKitIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/shipping/': {
+      id: '/_authenticated/shipping/'
+      path: '/shipping'
+      fullPath: '/shipping'
+      preLoaderRoute: typeof AuthenticatedShippingIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/'
@@ -1118,6 +1163,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/clerk/sign-in'
       preLoaderRoute: typeof ClerkauthSignInRouteImport
       parentRoute: typeof ClerkauthRouteRoute
+    }
+    '/_authenticated/shipping/bulk-update': {
+      id: '/_authenticated/shipping/bulk-update'
+      path: '/shipping/bulk-update'
+      fullPath: '/shipping/bulk-update'
+      preLoaderRoute: typeof AuthenticatedShippingBulkUpdateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/shipping/$id': {
+      id: '/_authenticated/shipping/$id'
+      path: '/shipping/$id'
+      fullPath: '/shipping/$id'
+      preLoaderRoute: typeof AuthenticatedShippingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings/notifications': {
       id: '/_authenticated/settings/notifications'
@@ -1522,10 +1581,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsShippingRoute: typeof AuthenticatedReportsShippingRoute
   AuthenticatedReportsTaxRoute: typeof AuthenticatedReportsTaxRoute
   AuthenticatedReturnsIdRoute: typeof AuthenticatedReturnsIdRoute
+  AuthenticatedShippingIdRoute: typeof AuthenticatedShippingIdRoute
+  AuthenticatedShippingBulkUpdateRoute: typeof AuthenticatedShippingBulkUpdateRoute
   AuthenticatedCustomersIndexRoute: typeof AuthenticatedCustomersIndexRoute
   AuthenticatedPosIndexRoute: typeof AuthenticatedPosIndexRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedReturnsIndexRoute: typeof AuthenticatedReturnsIndexRoute
+  AuthenticatedShippingIndexRoute: typeof AuthenticatedShippingIndexRoute
   AuthenticatedStarterKitIndexRoute: typeof AuthenticatedStarterKitIndexRoute
   AuthenticatedTransactionsIndexRoute: typeof AuthenticatedTransactionsIndexRoute
   AuthenticatedPurchasingOrdersIdRoute: typeof AuthenticatedPurchasingOrdersIdRoute
@@ -1556,10 +1618,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsShippingRoute: AuthenticatedReportsShippingRoute,
   AuthenticatedReportsTaxRoute: AuthenticatedReportsTaxRoute,
   AuthenticatedReturnsIdRoute: AuthenticatedReturnsIdRoute,
+  AuthenticatedShippingIdRoute: AuthenticatedShippingIdRoute,
+  AuthenticatedShippingBulkUpdateRoute: AuthenticatedShippingBulkUpdateRoute,
   AuthenticatedCustomersIndexRoute: AuthenticatedCustomersIndexRoute,
   AuthenticatedPosIndexRoute: AuthenticatedPosIndexRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedReturnsIndexRoute: AuthenticatedReturnsIndexRoute,
+  AuthenticatedShippingIndexRoute: AuthenticatedShippingIndexRoute,
   AuthenticatedStarterKitIndexRoute: AuthenticatedStarterKitIndexRoute,
   AuthenticatedTransactionsIndexRoute: AuthenticatedTransactionsIndexRoute,
   AuthenticatedPurchasingOrdersIdRoute: AuthenticatedPurchasingOrdersIdRoute,

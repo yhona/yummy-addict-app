@@ -208,7 +208,33 @@ export const sidebarData: SidebarData = {
       ],
     },
     {
-      title: '5. Relasi & Pegawai',
+      title: '5. Pengiriman',
+      items: [
+        {
+          title: 'Pengiriman',
+          icon: Truck,
+          items: [
+            {
+              title: 'Daftar Pengiriman',
+              url: '/shipping',
+              icon: Truck,
+            },
+            {
+              title: 'Update Resi Massal',
+              url: '/shipping/bulk-update',
+              icon: ClipboardList,
+            },
+            {
+              title: 'Manajemen Kurir',
+              url: '/settings/couriers',
+              icon: ShoppingBag,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: '6. Relasi & Pegawai',
       items: [
         {
           title: 'Pelanggan (CRM)',
