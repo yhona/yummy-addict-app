@@ -1,111 +1,133 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
-import { useReturns } from '@/features/returns/api/returns'
-import { formatCurrency } from '@/lib/utils'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Header } from '@/components/layout/header'
+import { Main } from '@/components/layout/main'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, Eye, RotateCcw } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Plus, RefreshCcw, Search } from 'lucide-react'
+import { DataTable } from '@/components/ui/data-table'
+import { useReturnList } from '@/features/returns/api/returns'
+import { ColumnDef } from '@tanstack/react-table'
+import { SalesReturn } from '@/features/returns/types'
 import { format } from 'date-fns'
-import { CreateReturnDialog } from '@/features/returns/components/create-return-dialog'
+import { id as idLocale } from 'date-fns/locale'
+import { Badge } from '@/components/ui/badge'
 
 export const Route = createFileRoute('/_authenticated/returns/')({
   component: ReturnsPage,
 })
 
-function ReturnsPage() {
-  const { data, isLoading } = useReturns({ limit: 50 })
-  const [createOpen, setCreateOpen] = useState(false)
+const columns: ColumnDef<SalesReturn>[] = [
+  {
+    accessorKey: 'number',
+    header: 'No. Retur',
+    cell: ({ row }) => <span className="font-semibold">{row.getValue('number')}</span>,
+  },
+  {
+    accessorKey: 'transaction',
+    header: 'Referensi Transaksi',
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">{row.original.transaction?.number || '-'}</span>
+    ),
+  },
+  {
+    accessorKey: 'date',
+    header: 'Tanggal',
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">
+        {format(new Date(row.getValue('date')), 'dd MMM yyyy, HH:mm', { locale: idLocale })}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'totalAmount',
+    header: 'Total Dana Kembali',
+    cell: ({ row }) => {
+      const amount = Number(row.getValue('totalAmount'))
+      return (
+        <span className="font-semibold text-destructive">
+          Rp {amount.toLocaleString('id-ID')}
+        </span>
+      )
+    },
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.getValue('status') as string
+      switch (status) {
+        case 'completed':
+          return <Badge className="bg-emerald-500">Selesai</Badge>
+        case 'pending':
+          return <Badge variant="secondary">Menunggu</Badge>
+        default:
+          return <Badge variant="outline">{status}</Badge>
+      }
+    },
+  },
+  {
+    accessorKey: 'processedByUser',
+    header: 'Diproses Oleh',
+    cell: ({ row }) => (
+      <span className="text-sm">
+        {row.original.processedByUser?.name || '-'}
+      </span>
+    ),
+  },
+]
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-  }
+function ReturnsPage() {
+  const navigate = useNavigate()
+  const { data, isLoading } = useReturnList()
 
   return (
-    <div className="space-y-4 p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <RotateCcw className="h-6 w-6" />
-            Sales Returns
-          </h1>
-          <p className="text-muted-foreground">Manage product returns and refunds</p>
+    <>
+      <Header fixed>
+        <div className="flex items-center gap-3">
+          <Search className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold">Data Retur Penjualan</h2>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Return
-        </Button>
-      </div>
+        <div className="ml-auto flex items-center space-x-4">
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
 
-      {/* Table */}
-      <div className="rounded-md border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50">
-            <tr>
-              <th className="p-4 text-left font-medium">Return #</th>
-              <th className="p-4 text-left font-medium">Transaction #</th>
-              <th className="p-4 text-left font-medium">Date</th>
-              <th className="p-4 text-left font-medium">Reason</th>
-              <th className="p-4 text-left font-medium">Status</th>
-              <th className="p-4 text-right font-medium">Amount</th>
-              <th className="p-4 text-center font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Main>
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Retur Penjualan</h1>
+            <p className="text-muted-foreground">
+              Kelola daftar pengembalian barang dan dana pelanggan (Refund).
+            </p>
+          </div>
+          <Button
+            className="w-full md:w-auto shadow-sm"
+            onClick={() => navigate({ to: '/returns/new' })}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            + Buat Retur Baru
+          </Button>
+        </div>
+
+        <Card className="shadow-none border-0 sm:border rounded-none sm:rounded-lg">
+          <CardContent className="p-0 sm:p-6">
             {isLoading ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center">
-                  <div className="flex justify-center">
-                    <Loader2 className="animate-spin" />
-                  </div>
-                </td>
-              </tr>
-            ) : (data?.data || []).length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-12 text-center text-muted-foreground">
-                  No returns found. Create your first return to get started.
-                </td>
-              </tr>
+              <div className="flex h-48 items-center justify-center">
+                <RefreshCcw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
             ) : (
-              (data?.data || []).map((ret) => (
-                <tr key={ret.id} className="border-b hover:bg-muted/50 transition-colors">
-                  <td className="p-4 font-mono font-medium">{ret.number}</td>
-                  <td className="p-4 font-mono text-muted-foreground">
-                    {ret.transaction?.number || '-'}
-                  </td>
-                  <td className="p-4 text-muted-foreground">
-                    {format(new Date(ret.date), 'MMM d, yyyy HH:mm')}
-                  </td>
-                  <td className="p-4 max-w-[200px] truncate">
-                    {ret.reason || '-'}
-                  </td>
-                  <td className="p-4">
-                    <Badge className={statusColors[ret.status] || ''} variant="outline">
-                      {ret.status}
-                    </Badge>
-                  </td>
-                  <td className="p-4 text-right font-medium">
-                    {formatCurrency(Number(ret.totalAmount))}
-                  </td>
-                  <td className="p-4 text-center">
-                    <Link to={`/returns/${ret.id}`}>
-                      <Button size="sm" variant="ghost">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                    </Link>
-                  </td>
-                </tr>
-              ))
+              <DataTable
+                columns={columns}
+                data={data?.data || []}
+                searchKey="number"
+              />
             )}
-          </tbody>
-        </table>
-      </div>
-
-      <CreateReturnDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+          </CardContent>
+        </Card>
+      </Main>
+    </>
   )
 }

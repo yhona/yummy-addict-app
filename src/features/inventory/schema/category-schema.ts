@@ -20,7 +20,7 @@ export const categoryFormSchema = z.object({
     .string()
     .optional()
     .or(z.literal('')),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 })
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>

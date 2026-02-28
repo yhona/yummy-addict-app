@@ -44,16 +44,16 @@ export function DataTableRowActions({ row, onDelete }: DataTableRowActionsProps)
       try {
         await onDelete(product)
         setShowDeleteDialog(false)
-        toast.success(`Product "${product.name}" deleted successfully`)
+        toast.success(`Product "${product.name}" deactivated successfully`)
       } catch (error) {
-        toast.error('Failed to delete product')
+        toast.error('Failed to deactivate product')
       } finally {
         setIsDeleting(false)
       }
     } else {
       // Fallback if no onDelete handler provided
       setShowDeleteDialog(false)
-      toast.success(`Product "${product.name}" deleted successfully`)
+      toast.success(`Product "${product.name}" deactivated successfully`)
     }
   }
 
@@ -88,7 +88,7 @@ export function DataTableRowActions({ row, onDelete }: DataTableRowActionsProps)
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            Nonaktifkan
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -96,7 +96,8 @@ export function DataTableRowActions({ row, onDelete }: DataTableRowActionsProps)
       <ConfirmDeleteDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        title="Delete Product"
+        title="Nonaktifkan Produk"
+        description="Produk ini akan dinonaktifkan dan tidak akan muncul lagi di halaman Kasir atau Transaksi Baru. Data historis pergerakan stok tetap aman."
         itemName={product.name}
         onConfirm={handleDelete}
         isLoading={isDeleting}

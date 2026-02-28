@@ -140,6 +140,14 @@ export interface TransactionReportItem {
   net_total: number
   payment_method: string
   status: string
+  // Extended
+  cash_amount?: number
+  change_amount?: number
+  delivery_method?: string
+  shipping_cost?: number
+  courier_name?: string
+  tracking_number?: string
+  notes?: string
 }
 
 export interface TransactionReportResponse {

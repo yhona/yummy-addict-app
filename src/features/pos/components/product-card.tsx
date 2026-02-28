@@ -2,7 +2,7 @@ import { ApiProduct } from '@/lib/api-types'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Package } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 
 interface ProductCardProps {
   product: ApiProduct
@@ -11,6 +11,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onAdd }: ProductCardProps) {
   const [imgError, setImgError] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
   
   // Construct image URL safely
   const getImageUrl = (path?: string | null) => {
@@ -25,13 +26,25 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
   const stock = product.currentStock || 0
   const hasStock = stock > 0
 
+  const handleAdd = useCallback(() => {
+    if (!hasStock) return;
+    
+    // Trigger animation state
+    setIsAdding(true);
+    setTimeout(() => setIsAdding(false), 200); // Reset after 200ms
+    
+    // Call original handler
+    onAdd(product);
+  }, [hasStock, onAdd, product]);
+
   return (
     <Card 
       className={cn(
         "cursor-pointer transition-all hover:ring-2 ring-primary overflow-hidden h-full flex flex-col group",
-        !hasStock && "opacity-60 grayscale"
+        !hasStock && "opacity-60 grayscale",
+        isAdding && "scale-95 opacity-80 ring-4" // Animation effect
       )} 
-      onClick={() => hasStock && onAdd(product)}
+      onClick={handleAdd}
     >
        <div className="aspect-square bg-muted relative flex items-center justify-center overflow-hidden">
          {imageUrl && !imgError ? (
@@ -46,7 +59,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
          )}
          {!hasStock && (
              <div className="absolute inset-0 bg-background/50 flex items-center justify-center backdrop-blur-sm">
-                 <span className="bg-destructive text-destructive-foreground px-2 py-1 text-xs font-bold rounded shadow-sm">Out of Stock</span>
+                 <span className="bg-destructive text-destructive-foreground px-2 py-1 text-xs font-bold rounded shadow-sm">Stok Habis</span>
              </div>
          )}
        </div>
@@ -56,7 +69,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
          <div className="mt-auto pt-2 flex justify-between items-center">
             <span className="font-bold text-sm text-primary">{formatCurrency(Number(product.sellingPrice))}</span>
             <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", hasStock ? "bg-secondary text-secondary-foreground" : "bg-destructive/10 text-destructive")}>
-                Stock: {stock}
+                Stok: {stock}
             </span>
          </div>
        </CardContent>

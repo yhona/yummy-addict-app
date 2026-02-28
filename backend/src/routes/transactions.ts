@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { transactions, transactionItems, products, productStock, stockMovements, warehouses, users } from '../db/schema'
+import { transactions, transactionItems, products, productStock, stockMovements, warehouses, users, receivables } from '../db/schema'
 import { eq, desc, sql, and, gte, lte, like, or } from 'drizzle-orm'
 import { z } from 'zod'
 
@@ -12,13 +12,19 @@ const createTransactionSchema = z.object({
     quantity: z.number().int().positive(),
     price: z.number().min(0),
   })),
-  paymentMethod: z.enum(['cash', 'qris', 'transfer']),
+  paymentMethod: z.enum(['cash', 'qris', 'transfer', 'debt']),
   cashAmount: z.number().min(0).optional(),
   discountAmount: z.number().min(0).default(0),
   cashierId: z.string().uuid().optional(),
   customerId: z.string().uuid().optional(),
   shiftId: z.string().uuid().optional(),
   notes: z.string().optional(),
+  // Delivery / Shipping
+  deliveryMethod: z.enum(['pickup', 'delivery']).default('pickup'),
+  shippingCost: z.number().min(0).default(0),
+  courierName: z.string().optional(),
+  trackingNumber: z.string().optional(),
+  shippingAddress: z.string().optional(),
 })
 
 // Create Transaction
@@ -33,6 +39,10 @@ transactionsRoutes.post('/', async (c) => {
     
     const data = validation.data
     
+    if (data.paymentMethod === 'debt' && !data.customerId) {
+      return c.json({ error: 'Customer is required for debt (kasbon) payment method' }, 400)
+    }
+    
     const result = await db.transaction(async (tx) => {
       const defaultWarehouse = await tx.query.warehouses.findFirst({
         where: eq(warehouses.isDefault, true)
@@ -42,28 +52,18 @@ transactionsRoutes.post('/', async (c) => {
         throw new Error('No default warehouse configured for stock deduction')
       }
 
+      const requiredQuantities = new Map<string, { quantity: number; name: string }>()
       let totalAmount = 0
       const processedItems = []
       
       for (const item of data.items) {
         const product = await tx.query.products.findFirst({
-          where: eq(products.id, item.productId)
+          where: eq(products.id, item.productId),
+          with: { bundleItems: { with: { product: true } } }
         })
         
         if (!product) {
           throw new Error(`Product ID ${item.productId} not found`)
-        }
-        
-        const stockRecord = await tx.query.productStock.findFirst({
-          where: and(
-            eq(productStock.productId, item.productId),
-            eq(productStock.warehouseId, defaultWarehouse.id)
-          )
-        })
-        
-        const currentQty = stockRecord?.quantity || 0
-        if (currentQty < item.quantity) {
-          throw new Error(`Insufficient stock for product ${product.name} (Current: ${currentQty})`)
         }
         
         totalAmount += item.price * item.quantity
@@ -71,12 +71,57 @@ transactionsRoutes.post('/', async (c) => {
           ...item,
           product,
           costPrice: product.costPrice,
-          currentQty
+        })
+
+        if (product.type === 'bundle') {
+          for (const bItem of product.bundleItems) {
+            const existing = requiredQuantities.get(bItem.productId) || { quantity: 0, name: bItem.product.name }
+            requiredQuantities.set(bItem.productId, {
+              quantity: existing.quantity + (bItem.quantity * item.quantity),
+              name: bItem.product.name
+            })
+          }
+        } else {
+          const existing = requiredQuantities.get(item.productId) || { quantity: 0, name: product.name }
+          requiredQuantities.set(item.productId, {
+            quantity: existing.quantity + item.quantity,
+            name: product.name
+          })
+        }
+      }
+
+      const stockDeductions: Array<{ productId: string; warehouseId: string; quantityToDeduct: number; currentQty: number }> = []
+      
+      for (const [productId, req] of requiredQuantities.entries()) {
+        const stockRecord = await tx.query.productStock.findFirst({
+          where: and(
+            eq(productStock.productId, productId),
+            eq(productStock.warehouseId, defaultWarehouse.id)
+          )
+        })
+        
+        const currentQty = stockRecord?.quantity || 0
+        if (currentQty < req.quantity) {
+          throw new Error(`Insufficient stock for product ${req.name} (Current: ${currentQty}, Required: ${req.quantity})`)
+        }
+        
+        stockDeductions.push({
+           productId,
+           warehouseId: defaultWarehouse.id,
+           quantityToDeduct: req.quantity,
+           currentQty
         })
       }
       
-      const finalAmount = totalAmount - data.discountAmount
+      const shippingCost = data.shippingCost || 0
+      const finalAmount = totalAmount - data.discountAmount + shippingCost
       
+      // Build notes with shipping address if present
+      const noteParts: string[] = []
+      if (data.notes) noteParts.push(data.notes)
+      if (data.shippingAddress) noteParts.push(`Alamat: ${data.shippingAddress}`)
+      const combinedNotes = noteParts.length > 0 ? noteParts.join(' | ') : undefined
+
       const number = `TRX-${Date.now()}`
       const [newTx] = await tx.insert(transactions).values({
         number,
@@ -90,9 +135,30 @@ transactionsRoutes.post('/', async (c) => {
         paymentMethod: data.paymentMethod,
         cashAmount: data.cashAmount ? String(data.cashAmount) : undefined,
         changeAmount: data.cashAmount ? String(data.cashAmount - finalAmount) : undefined,
-        status: 'completed',
-        notes: data.notes,
+        status: data.paymentMethod === 'debt' ? 'unpaid' : 'completed',
+        notes: combinedNotes,
+        // Delivery / Shipping
+        deliveryMethod: data.deliveryMethod || 'pickup',
+        shippingCost: String(shippingCost),
+        courierName: data.courierName,
+        trackingNumber: data.trackingNumber,
       }).returning()
+      
+      if (data.paymentMethod === 'debt') {
+        const dueDate = new Date()
+        dueDate.setDate(dueDate.getDate() + 30) // Default 30 days due date
+
+        await tx.insert(receivables).values({
+          number: `RCV-${Date.now()}`,
+          transactionId: newTx!.id,
+          customerId: data.customerId!,
+          amount: String(finalAmount),
+          remainingAmount: String(finalAmount),
+          status: 'unpaid',
+          dueDate,
+          createdBy: data.cashierId
+        })
+      }
       
       for (const item of processedItems) {
         await tx.insert(transactionItems).values({
@@ -100,30 +166,32 @@ transactionsRoutes.post('/', async (c) => {
           productId: item.productId,
           quantity: item.quantity,
           price: String(item.price),
-          costPrice: String(item.product.costPrice),
+          costPrice: String(item.costPrice),
           subtotal: String(item.price * item.quantity),
         })
-        
+      }
+
+      for (const deduction of stockDeductions) {
         await tx.update(productStock)
           .set({ 
-            quantity: item.currentQty - item.quantity,
+            quantity: deduction.currentQty - deduction.quantityToDeduct,
             updatedAt: new Date()
           })
           .where(and(
-            eq(productStock.productId, item.productId),
-            eq(productStock.warehouseId, defaultWarehouse.id)
+            eq(productStock.productId, deduction.productId),
+            eq(productStock.warehouseId, deduction.warehouseId)
           ))
           
         await tx.insert(stockMovements).values({
-          productId: item.productId,
-          warehouseId: defaultWarehouse.id,
+          productId: deduction.productId,
+          warehouseId: deduction.warehouseId,
           movementType: 'out',
           referenceType: 'sale',
           referenceId: newTx!.id,
           referenceNumber: newTx!.number,
-          quantityBefore: item.currentQty,
-          quantityChange: -item.quantity,
-          quantityAfter: item.currentQty - item.quantity,
+          quantityBefore: deduction.currentQty,
+          quantityChange: -deduction.quantityToDeduct,
+          quantityAfter: deduction.currentQty - deduction.quantityToDeduct,
           createdBy: data.cashierId,
           notes: 'POS Sale'
         })
@@ -283,7 +351,13 @@ transactionsRoutes.put('/:id/void', async (c) => {
       const trx = await tx.query.transactions.findFirst({
         where: eq(transactions.id, id),
         with: {
-          items: { with: { product: true } }
+          items: { 
+            with: { 
+              product: {
+                with: { bundleItems: { with: { product: true } } }
+              }
+            } 
+          }
         }
       })
       
@@ -304,42 +378,60 @@ transactionsRoutes.put('/:id/void', async (c) => {
         throw new Error('No default warehouse found')
       }
       
-      // Restore stock for each item
+      // Check quantities to restore based on bundle structure
+      const requiredRestores = new Map<string, { quantity: number; name: string }>()
+      
       for (const item of trx.items) {
-        // Get current stock
+        if (item.product.type === 'bundle') {
+          for (const bItem of item.product.bundleItems) {
+            const existing = requiredRestores.get(bItem.productId) || { quantity: 0, name: bItem.product.name }
+            requiredRestores.set(bItem.productId, {
+              quantity: existing.quantity + (bItem.quantity * item.quantity),
+              name: bItem.product.name
+            })
+          }
+        } else {
+          const existing = requiredRestores.get(item.productId) || { quantity: 0, name: item.product.name }
+          requiredRestores.set(item.productId, {
+            quantity: existing.quantity + item.quantity,
+            name: item.product.name
+          })
+        }
+      }
+
+      // Restore stock for each item
+      for (const [productId, restore] of requiredRestores.entries()) {
         const stockRecord = await tx.query.productStock.findFirst({
           where: and(
-            eq(productStock.productId, item.productId),
+            eq(productStock.productId, productId),
             eq(productStock.warehouseId, defaultWarehouse.id)
           )
         })
         
         const currentQty = stockRecord?.quantity || 0
-        const newQty = currentQty + item.quantity
+        const newQty = currentQty + restore.quantity
         
-        // Update stock
         if (stockRecord) {
           await tx.update(productStock)
             .set({ quantity: newQty, updatedAt: new Date() })
             .where(eq(productStock.id, stockRecord.id))
         } else {
           await tx.insert(productStock).values({
-            productId: item.productId,
+            productId: productId,
             warehouseId: defaultWarehouse.id,
-            quantity: item.quantity
+            quantity: restore.quantity
           })
         }
         
-        // Record stock movement (restore)
         await tx.insert(stockMovements).values({
-          productId: item.productId,
+          productId: productId,
           warehouseId: defaultWarehouse.id,
           movementType: 'in',
           referenceType: 'return',
           referenceId: trx.id,
           referenceNumber: `VOID-${trx.number}`,
           quantityBefore: currentQty,
-          quantityChange: item.quantity,
+          quantityChange: restore.quantity,
           quantityAfter: newQty,
           notes: `Void transaction ${trx.number}`
         })

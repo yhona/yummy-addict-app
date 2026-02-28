@@ -1,0 +1,1 @@
+ALTER TABLE "stock_opname" ADD COLUMN "is_active" boolean DEFAULT true NOT NULL;

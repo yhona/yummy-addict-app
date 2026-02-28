@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useForm, UseFormReturn } from 'react-hook-form'
+import { useForm, UseFormReturn, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
-import { Scan } from 'lucide-react'
+import { Scan, Plus, Trash2 } from 'lucide-react'
 import { BarcodeScanner } from '@/components/ui/barcode-scanner'
 import { toast } from 'sonner'
 import {
@@ -38,6 +38,7 @@ interface ProductFormProps {
   categories: Category[]
   units: Unit[]
   bulkProducts?: { id: string; name: string; sku: string }[]
+  products?: { id: string; name: string; sku: string }[]
   onSubmit: (data: ProductFormValues) => void
   onCancel: () => void
   isLoading?: boolean
@@ -48,6 +49,7 @@ export function ProductForm({
   categories,
   units,
   bulkProducts = [],
+  products = [],
   onSubmit,
   onCancel,
   isLoading = false,
@@ -58,6 +60,10 @@ export function ProductForm({
       ...defaultProductValues,
       ...initialData,
     } as any,
+  })
+  const { fields: bundleItems, append: appendBundleItem, remove: removeBundleItem } = useFieldArray({
+    control: form.control,
+    name: "bundleItems",
   })
 
   const [isScannerOpen, setIsScannerOpen] = useState(false)
@@ -260,7 +266,125 @@ export function ProductForm({
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Composition Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Standard or Bundle" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard Product</SelectItem>
+                    <SelectItem value="bundle">Product Bundle</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
+
+        {/* Bundle Items Section */}
+        {form.watch('type') === 'bundle' && (
+          <div className="pt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Bundle Components</h3>
+                <p className="text-sm text-muted-foreground">
+                  Select products to include in this bundle
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => appendBundleItem({ productId: '', quantity: 1 })}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              {bundleItems.map((item, index) => (
+                <div key={item.id} className="flex items-end gap-4 rounded-lg border p-4 bg-muted/20">
+                  <div className="flex-1">
+                    <FormField
+                      control={form.control}
+                      name={`bundleItems.${index}.productId`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ''}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder="Select a product" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {products.filter(p => form.watch('sku') !== p.sku).map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name} ({p.sku})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="w-32">
+                    <FormField
+                      control={form.control}
+                      name={`bundleItems.${index}.quantity`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              className="bg-background"
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => removeBundleItem(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {bundleItems.length === 0 && (
+                <div className="rounded-lg border border-dashed border-muted-foreground/25 p-8 text-center text-muted-foreground">
+                  No components added to this bundle yet. Click 'Add Item' to start.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Pricing */}
         <div className="pt-4">
@@ -488,67 +612,73 @@ export function ProductForm({
         </div>
 
         {/* Bulk/Variant Settings */}
-        <div className="pt-4">
-          <h3 className="text-lg font-medium">Bulk/Variant Settings</h3>
-          <p className="text-sm text-muted-foreground">
-            Configure bulk product and variant relationships
-          </p>
-        </div>
-        <Separator />
+        {form.watch('type') !== 'bundle' && (
+          <>
+            <div className="pt-4">
+              <h3 className="text-lg font-medium">Bulk/Variant Settings</h3>
+              <p className="text-sm text-muted-foreground">
+                Configure bulk product and variant relationships
+              </p>
+            </div>
+            <Separator />
+          </>
+        )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="isBulk"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">Bulk Product</FormLabel>
+        {form.watch('type') !== 'bundle' && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="isBulk"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Bulk Product</FormLabel>
+                    <FormDescription>
+                      This is a bulk/wholesale product (e.g., 100kg bag)
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="conversionRatio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Conversion Ratio</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      placeholder="e.g., 0.1 for 100gr = 0.1kg"
+                      {...field}
+                      value={field.value ?? ''}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                    />
+                  </FormControl>
                   <FormDescription>
-                    This is a bulk/wholesale product (e.g., 100kg bag)
+                    How much of parent stock to deduct (e.g., 0.1 = 10%)
                   </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="conversionRatio"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Conversion Ratio</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    placeholder="e.g., 0.1 for 100gr = 0.1kg"
-                    {...field}
-                    value={field.value ?? ''}
-                    onChange={(e) =>
-                      field.onChange(
-                        e.target.value ? Number(e.target.value) : null
-                      )
-                    }
-                  />
-                </FormControl>
-                <FormDescription>
-                  How much of parent stock to deduct (e.g., 0.1 = 10%)
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         {/* Parent Product Selector - show only when not a bulk product */}
-        {!form.watch('isBulk') && bulkProducts.length > 0 && (
+        {form.watch('type') !== 'bundle' && !form.watch('isBulk') && bulkProducts.length > 0 && (
           <FormField
             control={form.control}
             name="parentId"

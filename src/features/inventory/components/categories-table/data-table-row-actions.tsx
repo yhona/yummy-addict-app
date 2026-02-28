@@ -45,7 +45,7 @@ export function DataTableRowActions({ row, onEdit, onDelete }: DataTableRowActio
         setShowDeleteDialog(false)
         toast.success(`Category "${category.name}" deleted successfully`)
       } catch (error) {
-        toast.error('Failed to delete category')
+        // Global handler handles the error toast
       } finally {
         setIsDeleting(false)
       }

@@ -97,86 +97,55 @@ ordersRoutes.post('/', async (c) => {
       
       // Additional check: Validate and Deduct Stock
       const processedItems = []
+      const requiredQuantities = new Map<string, { quantity: number; name: string; parentId?: string | null; conversionRatio?: string | null }>()
+
       for (const item of data.items) {
-          // Get product with parent info
           const product = await tx.query.products.findFirst({
             where: eq(products.id, item.productId),
-            with: { parent: true }
+            with: { parent: true, bundleItems: { with: { product: true } } }
           })
 
           if (!product) {
             throw new Error(`Product not found: ${item.productId}`)
           }
-
-          const stockRecord = await tx.query.productStock.findFirst({
-            where: and(
-              eq(productStock.productId, item.productId),
-              eq(productStock.warehouseId, defaultWarehouse.id)
-            )
-          })
-
-          const currentQty = stockRecord?.quantity || 0
-          if (currentQty < item.quantity) {
-             throw new Error(`Insufficient stock for ${product?.name || 'Item'} (Current: ${currentQty})`)
-          }
           
-          // Deduct Stock from this product
-          if (stockRecord) {
-            await tx.update(productStock)
-              .set({ 
-                quantity: currentQty - item.quantity,
-                updatedAt: new Date()
-              })
-              .where(eq(productStock.id, stockRecord.id))
-          } else {
-             throw new Error(`Stock record missing for product ${item.productId}`)
-          }
+          processedItems.push({ ...item, product })
 
-          // ===== BULK-TO-RETAIL CONVERSION =====
-          // If product has a parent (bulk product), also deduct from parent stock
-          if (product.parentId && product.conversionRatio) {
-            const parentStockRecord = await tx.query.productStock.findFirst({
-              where: and(
-                eq(productStock.productId, product.parentId),
-                eq(productStock.warehouseId, defaultWarehouse.id)
-              )
-            })
-
-            const parentCurrentQty = parentStockRecord?.quantity || 0
-            const conversionRatio = Number(product.conversionRatio)
-            // Calculate deduction: quantity / ratio
-            // e.g., sell 100 retail (ratio 100) = deduct 1 bulk unit
-            const exactDeduction = item.quantity / conversionRatio
-            // Use Math.floor since quantity is integer in DB
-            const deductFromParent = Math.floor(exactDeduction)
-
-            // Only deduct if at least 1 whole unit and sufficient stock
-            if (parentStockRecord && deductFromParent >= 1 && parentCurrentQty >= deductFromParent) {
-              await tx.update(productStock)
-                .set({ 
-                  quantity: parentCurrentQty - deductFromParent,
-                  updatedAt: new Date()
-                })
-                .where(eq(productStock.id, parentStockRecord.id))
-
-              // Record parent stock movement
-              await tx.insert(stockMovements).values({
-                productId: product.parentId,
-                warehouseId: defaultWarehouse.id,
-                movementType: 'out',
-                referenceType: 'sale',
-                referenceId: null, // Will be updated with order ID later
-                referenceNumber: number,
-                quantityBefore: parentCurrentQty,
-                quantityChange: -deductFromParent,
-                quantityAfter: parentCurrentQty - deductFromParent,
-                notes: `Bulk conversion: Sold ${item.quantity}x ${product.name} (ratio: ${conversionRatio}, deducted: ${deductFromParent})`
-              })
+          if (product.type === 'bundle') {
+            for (const bItem of product.bundleItems) {
+              const bProd = bItem.product
+              const existing = requiredQuantities.get(bProd.id) || { quantity: 0, name: bProd.name, parentId: bProd.parentId, conversionRatio: bProd.conversionRatio }
+              requiredQuantities.set(bProd.id, { ...existing, quantity: existing.quantity + (bItem.quantity * item.quantity) })
             }
+          } else {
+            const existing = requiredQuantities.get(product.id) || { quantity: 0, name: product.name, parentId: product.parentId, conversionRatio: product.conversionRatio }
+            requiredQuantities.set(product.id, { ...existing, quantity: existing.quantity + item.quantity })
           }
-          // ===== END BULK-TO-RETAIL CONVERSION =====
-          
-          processedItems.push({ ...item, currentQty, product })
+      }
+
+      const stockDeductions: Array<{ productId: string; warehouseId: string; quantityToDeduct: number; currentQty: number; parentId?: string | null; conversionRatio?: string | null }> = []
+
+      for (const [productId, req] of requiredQuantities.entries()) {
+        const stockRecord = await tx.query.productStock.findFirst({
+          where: and(
+            eq(productStock.productId, productId),
+            eq(productStock.warehouseId, defaultWarehouse.id)
+          )
+        })
+
+        const currentQty = stockRecord?.quantity || 0
+        if (currentQty < req.quantity) {
+           throw new Error(`Insufficient stock for ${req.name} (Current: ${currentQty}, Required: ${req.quantity})`)
+        }
+
+        stockDeductions.push({
+          productId,
+          warehouseId: defaultWarehouse.id,
+          quantityToDeduct: req.quantity,
+          currentQty,
+          parentId: req.parentId,
+          conversionRatio: req.conversionRatio
+        })
       }
       
       // Create order
@@ -201,7 +170,7 @@ ordersRoutes.post('/', async (c) => {
         finalAmount: String(finalAmount),
       }).returning()
       
-      // Create order items and Stock Movements
+      // Create order items
       for (const item of processedItems) {
         await tx.insert(orderItems).values({
           orderId: newOrder!.id,
@@ -211,21 +180,66 @@ ordersRoutes.post('/', async (c) => {
           subtotal: String(item.price * item.quantity),
           notes: item.notes,
         })
-        
-        // Record movement
+      }
+
+      // Stock Deductions & Movements
+      for (const deduction of stockDeductions) {
+        await tx.update(productStock)
+          .set({ 
+            quantity: deduction.currentQty - deduction.quantityToDeduct,
+            updatedAt: new Date()
+          })
+          .where(and(
+            eq(productStock.productId, deduction.productId),
+            eq(productStock.warehouseId, deduction.warehouseId)
+          ))
+          
         await tx.insert(stockMovements).values({
-          productId: item.productId,
-          warehouseId: defaultWarehouse.id,
+          productId: deduction.productId,
+          warehouseId: deduction.warehouseId,
           movementType: 'out',
-          referenceType: 'sale', // Using 'sale' as generic type, or could use 'order' if enum allows
-          referenceId: newOrder!.id, // Linking to Order ID
+          referenceType: 'sale',
+          referenceId: newOrder!.id,
           referenceNumber: newOrder!.number,
-          quantityBefore: item.currentQty,
-          quantityChange: -item.quantity,
-          quantityAfter: item.currentQty - item.quantity,
-          // createdBy: c.get('user')?.id, // If user context is available, else null
+          quantityBefore: deduction.currentQty,
+          quantityChange: -deduction.quantityToDeduct,
+          quantityAfter: deduction.currentQty - deduction.quantityToDeduct,
           notes: `Order Reservation ${newOrder!.number}`
         })
+
+        // BULK-TO-RETAIL CONVERSION
+        if (deduction.parentId && deduction.conversionRatio) {
+          const parentStockRecord = await tx.query.productStock.findFirst({
+            where: and(
+              eq(productStock.productId, deduction.parentId),
+              eq(productStock.warehouseId, deduction.warehouseId)
+            )
+          })
+
+          const parentCurrentQty = parentStockRecord?.quantity || 0
+          const conversionRatio = Number(deduction.conversionRatio)
+          const exactDeduction = deduction.quantityToDeduct / conversionRatio
+          const deductFromParent = Math.floor(exactDeduction)
+
+          if (parentStockRecord && deductFromParent >= 1 && parentCurrentQty >= deductFromParent) {
+            await tx.update(productStock)
+              .set({ quantity: parentCurrentQty - deductFromParent, updatedAt: new Date() })
+              .where(eq(productStock.id, parentStockRecord.id))
+
+            await tx.insert(stockMovements).values({
+              productId: deduction.parentId,
+              warehouseId: deduction.warehouseId,
+              movementType: 'out',
+              referenceType: 'sale',
+              referenceId: newOrder!.id,
+              referenceNumber: newOrder!.number,
+              quantityBefore: parentCurrentQty,
+              quantityChange: -deductFromParent,
+              quantityAfter: parentCurrentQty - deductFromParent,
+              notes: `Bulk conversion: Sold ${deduction.quantityToDeduct}x retail (ratio: ${conversionRatio}, deducted: ${deductFromParent})`
+            })
+          }
+        }
       }
       
       // Return full order with items
@@ -360,7 +374,8 @@ ordersRoutes.put('/:id', async (c) => {
     const result = await db.transaction(async (tx) => {
       // Get existing order
       const existingOrder = await tx.query.orders.findFirst({
-        where: eq(orders.id, id)
+        where: eq(orders.id, id),
+        with: { items: { with: { product: { with: { bundleItems: { with: { product: true } } } } } } }
       })
       
       if (!existingOrder) {
@@ -385,15 +400,31 @@ ordersRoutes.put('/:id', async (c) => {
 
       if (data.items) {
         // 1. Restore stock for OLD items
-        const oldItems = await tx.query.orderItems.findMany({
-            where: eq(orderItems.orderId, id)
-        })
+        const requiredRestores = new Map<string, { quantity: number; name: string }>()
+        
+        for (const item of existingOrder.items) {
+          if (item.product?.type === 'bundle') {
+            for (const bItem of item.product.bundleItems) {
+              const existing = requiredRestores.get(bItem.productId) || { quantity: 0, name: bItem.product.name }
+              requiredRestores.set(bItem.productId, {
+                quantity: existing.quantity + (bItem.quantity * item.quantity),
+                name: bItem.product.name
+              })
+            }
+          } else {
+            const prodName = item.product?.name || 'Unknown' 
+            const existing = requiredRestores.get(item.productId) || { quantity: 0, name: prodName }
+            requiredRestores.set(item.productId, {
+              quantity: existing.quantity + item.quantity,
+              name: prodName
+            })
+          }
+        }
 
-        for (const item of oldItems) {
-            // Restore stock
+        for (const [productId, restore] of requiredRestores.entries()) {
             const stockRecord = await tx.query.productStock.findFirst({
                 where: and(
-                    eq(productStock.productId, item.productId),
+                    eq(productStock.productId, productId),
                     eq(productStock.warehouseId, defaultWarehouse.id)
                 )
             })
@@ -403,29 +434,29 @@ ordersRoutes.put('/:id', async (c) => {
             if (stockRecord) {
                 await tx.update(productStock)
                     .set({ 
-                        quantity: currentQty + item.quantity,
+                        quantity: currentQty + restore.quantity,
                         updatedAt: new Date()
                     })
                     .where(eq(productStock.id, stockRecord.id))
             } else {
                  await tx.insert(productStock).values({
-                   productId: item.productId,
+                   productId: productId,
                    warehouseId: defaultWarehouse.id,
-                   quantity: item.quantity
+                   quantity: restore.quantity
                  })
             }
 
             // Record restoration movement
             await tx.insert(stockMovements).values({
-                productId: item.productId,
+                productId: productId,
                 warehouseId: defaultWarehouse.id,
                 movementType: 'in',
                 referenceType: 'adjustment',
                 referenceId: id,
                 referenceNumber: existingOrder.number,
                 quantityBefore: currentQty,
-                quantityChange: item.quantity,
-                quantityAfter: currentQty + item.quantity,
+                quantityChange: restore.quantity,
+                quantityAfter: currentQty + restore.quantity,
                 notes: `Restore before update ${existingOrder.number}`
             })
         }
@@ -436,49 +467,29 @@ ordersRoutes.put('/:id', async (c) => {
         // Recalculate total and Deduct stock for NEW items
         totalAmount = '0'
         let total = 0
+        const requiredQuantities = new Map<string, { quantity: number; name: string; parentId?: string | null; conversionRatio?: string | null }>()
         
         for (const item of data.items) {
-          // Check Stock
-          const stockRecord = await tx.query.productStock.findFirst({
-            where: and(
-              eq(productStock.productId, item.productId),
-              eq(productStock.warehouseId, defaultWarehouse.id)
-            )
+          const product = await tx.query.products.findFirst({
+            where: eq(products.id, item.productId),
+            with: { parent: true, bundleItems: { with: { product: true } } }
           })
-
-          const currentQty = stockRecord?.quantity || 0
-          if (currentQty < item.quantity) {
-             const product = await tx.query.products.findFirst({
-                where: eq(products.id, item.productId)
-             })
-             throw new Error(`Insufficient stock for ${product?.name || 'Item'} (Current: ${currentQty})`)
-          }
+          if (!product) throw new Error(`Product not found: ${item.productId}`)
           
-          // Deduct Stock
-          if (stockRecord) {
-            await tx.update(productStock)
-              .set({ 
-                quantity: currentQty - item.quantity,
-                updatedAt: new Date()
-              })
-              .where(eq(productStock.id, stockRecord.id))
+          total += item.price * item.quantity
+
+          if (product.type === 'bundle') {
+            for (const bItem of product.bundleItems) {
+              const bProd = bItem.product
+              const existing = requiredQuantities.get(bProd.id) || { quantity: 0, name: bProd.name, parentId: bProd.parentId, conversionRatio: bProd.conversionRatio }
+              requiredQuantities.set(bProd.id, { ...existing, quantity: existing.quantity + (bItem.quantity * item.quantity) })
+            }
+          } else {
+            const existing = requiredQuantities.get(product.id) || { quantity: 0, name: product.name, parentId: product.parentId, conversionRatio: product.conversionRatio }
+            requiredQuantities.set(product.id, { ...existing, quantity: existing.quantity + item.quantity })
           }
 
-          // Record deduction movement
-          await tx.insert(stockMovements).values({
-              productId: item.productId,
-              warehouseId: defaultWarehouse.id,
-              movementType: 'out',
-              referenceType: 'sale',
-              referenceId: id,
-              referenceNumber: existingOrder.number,
-              quantityBefore: currentQty,
-              quantityChange: -item.quantity,
-              quantityAfter: currentQty - item.quantity,
-              notes: `Update Reservation ${existingOrder.number}`
-          })
-
-          total += item.price * item.quantity
+          // Insert order item
           await tx.insert(orderItems).values({
             orderId: id,
             productId: item.productId,
@@ -487,6 +498,70 @@ ordersRoutes.put('/:id', async (c) => {
             subtotal: String(item.price * item.quantity),
             notes: item.notes,
           })
+        }
+
+        for (const [productId, req] of requiredQuantities.entries()) {
+          const stockRecord = await tx.query.productStock.findFirst({
+            where: and(eq(productStock.productId, productId), eq(productStock.warehouseId, defaultWarehouse.id))
+          })
+
+          const currentQty = stockRecord?.quantity || 0
+          if (currentQty < req.quantity) {
+             throw new Error(`Insufficient stock for ${req.name} (Current: ${currentQty}, Required: ${req.quantity})`)
+          }
+          
+          if (stockRecord) {
+            await tx.update(productStock)
+              .set({ quantity: currentQty - req.quantity, updatedAt: new Date() })
+              .where(eq(productStock.id, stockRecord.id))
+          }
+
+          await tx.insert(stockMovements).values({
+              productId,
+              warehouseId: defaultWarehouse.id,
+              movementType: 'out',
+              referenceType: 'sale',
+              referenceId: id,
+              referenceNumber: existingOrder.number,
+              quantityBefore: currentQty,
+              quantityChange: -req.quantity,
+              quantityAfter: currentQty - req.quantity,
+              notes: `Update Reservation ${existingOrder.number}`
+          })
+
+          // BUGK-TO-RETAIL CONVERSION
+          if (req.parentId && req.conversionRatio) {
+            const parentStockRecord = await tx.query.productStock.findFirst({
+              where: and(
+                eq(productStock.productId, req.parentId),
+                eq(productStock.warehouseId, defaultWarehouse.id)
+              )
+            })
+
+            const parentCurrentQty = parentStockRecord?.quantity || 0
+            const conversionRatio = Number(req.conversionRatio)
+            const exactDeduction = req.quantity / conversionRatio
+            const deductFromParent = Math.floor(exactDeduction)
+
+            if (parentStockRecord && deductFromParent >= 1 && parentCurrentQty >= deductFromParent) {
+              await tx.update(productStock)
+                .set({ quantity: parentCurrentQty - deductFromParent, updatedAt: new Date() })
+                .where(eq(productStock.id, parentStockRecord.id))
+
+              await tx.insert(stockMovements).values({
+                productId: req.parentId,
+                warehouseId: defaultWarehouse.id,
+                movementType: 'out',
+                referenceType: 'sale',
+                referenceId: id,
+                referenceNumber: existingOrder.number,
+                quantityBefore: parentCurrentQty,
+                quantityChange: -deductFromParent,
+                quantityAfter: parentCurrentQty - deductFromParent,
+                notes: `Bulk conversion: Sold ${req.quantity}x retail (ratio: ${conversionRatio}, deducted: ${deductFromParent})`
+              })
+            }
+          }
         }
         
         totalAmount = String(total)
@@ -661,7 +736,7 @@ ordersRoutes.delete('/:id', async (c) => {
     
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, id),
-      with: { items: true }
+      with: { items: { with: { product: { with: { bundleItems: { with: { product: true } } } } } } }
     })
     
     if (!order) {
@@ -682,12 +757,33 @@ ordersRoutes.delete('/:id', async (c) => {
         throw new Error('No default warehouse configured')
       }
 
-      // Restore Stock for each item
+      const requiredRestores = new Map<string, { quantity: number; name: string }>()
+      
       for (const item of order.items) {
+        if (item.product?.type === 'bundle') {
+          for (const bItem of item.product.bundleItems) {
+            const existing = requiredRestores.get(bItem.productId) || { quantity: 0, name: bItem.product.name }
+            requiredRestores.set(bItem.productId, {
+              quantity: existing.quantity + (bItem.quantity * item.quantity),
+              name: bItem.product.name
+            })
+          }
+        } else {
+          const prodName = item.product?.name || 'Unknown' 
+          const existing = requiredRestores.get(item.productId) || { quantity: 0, name: prodName }
+          requiredRestores.set(item.productId, {
+            quantity: existing.quantity + item.quantity,
+            name: prodName
+          })
+        }
+      }
+
+      // Restore Stock for each item
+      for (const [productId, restore] of requiredRestores.entries()) {
           // Get current stock
           const stockRecord = await tx.query.productStock.findFirst({
             where: and(
-              eq(productStock.productId, item.productId),
+              eq(productStock.productId, productId),
               eq(productStock.warehouseId, defaultWarehouse.id)
             )
           })
@@ -698,30 +794,28 @@ ordersRoutes.delete('/:id', async (c) => {
           if (stockRecord) {
             await tx.update(productStock)
               .set({ 
-                quantity: currentQty + item.quantity,
+                quantity: currentQty + restore.quantity,
                 updatedAt: new Date()
               })
               .where(eq(productStock.id, stockRecord.id))
           } else {
-             // If stock record missing, create it
              await tx.insert(productStock).values({
-               productId: item.productId,
+               productId: productId,
                warehouseId: defaultWarehouse.id,
-               quantity: item.quantity
+               quantity: restore.quantity
              })
           }
           
-          // Record Stock Movement
           await tx.insert(stockMovements).values({
-            productId: item.productId,
+            productId: productId,
             warehouseId: defaultWarehouse.id,
             movementType: 'in',
-            referenceType: 'return', // Using 'return' as generic type for restoration
+            referenceType: 'return',
             referenceId: order.id,
             referenceNumber: order.number,
             quantityBefore: currentQty,
-            quantityChange: item.quantity,
-            quantityAfter: currentQty + item.quantity,
+            quantityChange: restore.quantity,
+            quantityAfter: currentQty + restore.quantity,
             notes: `Restore from Cancelled Order ${order.number}`
           })
       }

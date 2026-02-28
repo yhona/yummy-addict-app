@@ -43,6 +43,27 @@
       "when": 1772000470617,
       "tag": "0005_third_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772013283464,
+      "tag": "0006_soft_mother_askani",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772246459163,
+      "tag": "0007_orange_golden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772250871729,
+      "tag": "0008_needy_scrambler",
+      "breakpoints": true
     }
   ]
 }

@@ -279,7 +279,15 @@ reportsRoutes.get('/transactions', async (c) => {
     discount: transactions.discountAmount,
     net_total: transactions.finalAmount,
     payment_method: transactions.paymentMethod,
-    status: transactions.status
+    status: transactions.status,
+    // Extended fields
+    cash_amount: transactions.cashAmount,
+    change_amount: transactions.changeAmount,
+    delivery_method: transactions.deliveryMethod,
+    shipping_cost: transactions.shippingCost,
+    courier_name: transactions.courierName,
+    tracking_number: transactions.trackingNumber,
+    notes: transactions.notes,
   })
   .from(transactions)
   .leftJoin(customers, eq(transactions.customerId, customers.id))
@@ -295,7 +303,10 @@ reportsRoutes.get('/transactions', async (c) => {
       customer_name: tx.customer_name || 'Umum',
       gross_total: Number(tx.gross_total),
       discount: Number(tx.discount),
-      net_total: Number(tx.net_total)
+      net_total: Number(tx.net_total),
+      cash_amount: Number(tx.cash_amount || 0),
+      change_amount: Number(tx.change_amount || 0),
+      shipping_cost: Number(tx.shipping_cost || 0),
     })),
     meta: {
       current_page: page,

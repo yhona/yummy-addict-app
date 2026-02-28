@@ -14,6 +14,8 @@ export function handleServerError(error: unknown) {
     Number(error.status) === 204
   ) {
     errMsg = 'Content not found.'
+  } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    errMsg = error.message
   }
 
   if (error instanceof AxiosError) {

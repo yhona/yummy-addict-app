@@ -54,6 +54,8 @@ function ProductDetailPage() {
   const product = apiProduct ? {
       ...apiProduct,
       productType: 'inventory' as const, // Default for now as backend doesn't have it
+      type: apiProduct.type || 'standard',
+      bundleItems: apiProduct.bundleItems || [],
       wholesalePrice: 0, // Not in backend
       memberPrice: 0, // Not in backend
       costPrice: parseFloat(apiProduct.costPrice || '0'), // Convert string/decimal
@@ -153,8 +155,13 @@ function ProductDetailPage() {
                   </div>
                 )}
                 <div className="grid gap-1">
-                  <h2 className="text-2xl font-bold tracking-tight">
+                  <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
                     {product.name}
+                    {product.type === 'bundle' && (
+                      <Badge variant="default" className="ml-2 bg-indigo-500 hover:bg-indigo-600">
+                        Bundle
+                      </Badge>
+                    )}
                   </h2>
                   <p className="text-base text-muted-foreground mt-1">
                     SKU: {product.sku}
@@ -337,6 +344,44 @@ function ProductDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Bundle Components */}
+            {product.type === 'bundle' && product.bundleItems && product.bundleItems.length > 0 && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Bundle Components</CardTitle>
+                  <CardDescription>Items included in this bundle</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                            <th className="p-3 text-left font-medium">SKU</th>
+                            <th className="p-3 text-left font-medium">Name</th>
+                            <th className="p-3 text-right font-medium">Quantity</th>
+                            <th className="p-3 text-right font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {product.bundleItems.map((item: any) => (
+                          <tr key={item.productId} className="border-b last:border-0 hover:bg-muted/50">
+                            <td className="p-3 font-mono">{item.product?.sku || '-'}</td>
+                            <td className="p-3">{item.product?.name || 'Unknown Product'}</td>
+                            <td className="p-3 text-right">{item.quantity}</td>
+                            <td className="p-3 text-right">
+                                <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/inventory/products/$id', params: { id: item.productId } })}>
+                                  View
+                                </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Variants */}
             {product.variants && product.variants.length > 0 && (

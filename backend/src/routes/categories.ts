@@ -31,6 +31,7 @@ categoriesRoutes.get('/', async (c) => {
     // Return with product counts
     const result = await db.query.categories.findMany({
       with: {
+        parent: true,
         subcategories: true,
         products: true,
       },
@@ -42,6 +43,7 @@ categoriesRoutes.get('/', async (c) => {
         ...cat,
         productCount: cat.products.length,
         subcategoryCount: cat.subcategories.length,
+        parentName: cat.parent?.name,
       }))
     )
   } catch (error) {

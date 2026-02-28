@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -31,7 +32,6 @@ import { Switch } from '@/components/ui/switch'
 import {
   categoryFormSchema,
   CategoryFormValues,
-  defaultCategoryValues,
 } from '../../schema/category-schema'
 import { Category } from '../../types'
 
@@ -61,11 +61,39 @@ export function CategoryDialog({
           code: initialData.code || '',
           name: initialData.name,
           description: initialData.description || '',
-          parentId: initialData.parentId || '',
-          isActive: initialData.isActive,
+          parentId: initialData.parentId || 'none',
+          isActive: initialData.isActive ?? true,
         }
-      : defaultCategoryValues,
+      : {
+          code: '',
+          name: '',
+          description: '',
+          parentId: 'none',
+          isActive: true,
+        },
   })
+
+  useEffect(() => {
+    if (open) {
+      if (initialData) {
+        form.reset({
+          code: initialData.code || '',
+          name: initialData.name,
+          description: initialData.description || '',
+          parentId: initialData.parentId || 'none',
+          isActive: initialData.isActive ?? true,
+        })
+      } else {
+        form.reset({
+          code: '',
+          name: '',
+          description: '',
+          parentId: 'none',
+          isActive: true,
+        })
+      }
+    }
+  }, [open, initialData, form])
 
   const handleSubmit = (data: CategoryFormValues) => {
     onSubmit(data)

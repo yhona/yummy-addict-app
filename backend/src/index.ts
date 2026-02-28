@@ -20,9 +20,12 @@ import { uploadRoutes } from './routes/upload'
 import { ordersRoutes } from './routes/orders'
 import { mcpRoutes } from './routes/mcp'
 import { chatRoutes } from './routes/chat'
-import { couriersRoutes } from './routes/couriers'
 import { opnameRoutes } from './routes/opname'
 import { shippingRoutes } from './routes/shipping'
+import { expensesRoutes } from './routes/expenses'
+import { couriersRoutes } from './routes/couriers'
+import { receivablesRoutes } from './routes/receivables'
+import { authMiddleware, jwtMiddleware } from './middleware/auth'
 import { serveStatic } from 'hono/bun'
 
 const app = new Hono()
@@ -40,27 +43,36 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 // API Routes
 const api = new Hono()
 api.route('/auth', authRoutes)
-api.route('/products', productsRoutes)
-api.route('/categories', categoriesRoutes)
-api.route('/units', unitsRoutes)
-api.route('/warehouses', warehousesRoutes)
-api.route('/stock', stockRoutes)
-api.route('/movements', movementsRoutes)
-api.route('/transactions', transactionsRoutes)
-api.route('/suppliers', suppliersRoutes)
-api.route('/purchases', purchasesRoutes)
-api.route('/customers', customersRoutes)
-api.route('/shifts', shiftsRoutes)
-api.route('/analytics', analyticsRoutes)
-api.route('/reports', reportsRoutes)
-api.route('/returns', returnsRoutes)
-api.route('/upload', uploadRoutes)
-api.route('/orders', ordersRoutes)
-api.route('/mcp', mcpRoutes)
-api.route('/chat', chatRoutes)
-api.route('/couriers', couriersRoutes)
-api.route('/opname', opnameRoutes)
-api.route('/shipping', shippingRoutes)
+
+// Protected API Routes
+const protectedApi = new Hono()
+protectedApi.use('*', jwtMiddleware, authMiddleware)
+
+protectedApi.route('/products', productsRoutes)
+protectedApi.route('/categories', categoriesRoutes)
+protectedApi.route('/units', unitsRoutes)
+protectedApi.route('/warehouses', warehousesRoutes)
+protectedApi.route('/stock', stockRoutes)
+protectedApi.route('/movements', movementsRoutes)
+protectedApi.route('/transactions', transactionsRoutes)
+protectedApi.route('/suppliers', suppliersRoutes)
+protectedApi.route('/purchases', purchasesRoutes)
+protectedApi.route('/customers', customersRoutes)
+protectedApi.route('/shifts', shiftsRoutes)
+protectedApi.route('/analytics', analyticsRoutes)
+protectedApi.route('/reports', reportsRoutes)
+protectedApi.route('/returns', returnsRoutes)
+protectedApi.route('/upload', uploadRoutes)
+protectedApi.route('/orders', ordersRoutes)
+protectedApi.route('/mcp', mcpRoutes)
+protectedApi.route('/chat', chatRoutes)
+protectedApi.route('/couriers', couriersRoutes)
+protectedApi.route('/opname', opnameRoutes)
+protectedApi.route('/shipping', shippingRoutes)
+protectedApi.route('/expenses', expensesRoutes)
+protectedApi.route('/receivables', receivablesRoutes)
+
+api.route('/', protectedApi)
 
 app.route('/api', api)
 

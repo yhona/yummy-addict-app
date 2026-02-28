@@ -73,6 +73,7 @@ export const products = pgTable('products', {
   barcode: varchar('barcode', { length: 50 }),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+  type: varchar('type', { length: 20 }).notNull().default('standard'), // 'standard' or 'bundle'
   categoryId: uuid('category_id').references(() => categories.id),
   unitId: uuid('unit_id').references(() => units.id),
   parentId: uuid('parent_id'), // Link to bulk/parent product
@@ -105,6 +106,33 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   variants: many(products, {
     relationName: 'product_variants',
+  }),
+  bundleItems: many(bundleItems, {
+    relationName: 'bundleItems',
+  }),
+  includedInBundles: many(bundleItems, {
+    relationName: 'includedInBundles',
+  }),
+}))
+
+// Bundle Items (items inside a package/bundle product)
+export const bundleItems = pgTable('bundle_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  bundleId: uuid('bundle_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  quantity: integer('quantity').notNull().default(1),
+})
+
+export const bundleItemsRelations = relations(bundleItems, ({ one }) => ({
+  bundle: one(products, {
+    fields: [bundleItems.bundleId],
+    references: [products.id],
+    relationName: 'bundleItems',
+  }),
+  product: one(products, {
+    fields: [bundleItems.productId],
+    references: [products.id],
+    relationName: 'includedInBundles',
   }),
 }))
 
@@ -506,6 +534,7 @@ export const stockOpname = pgTable('stock_opname', {
   status: varchar('status', { length: 20 }).notNull().default('draft'),
   notes: text('notes'),
   createdBy: uuid('created_by').references(() => users.id),
+  isActive: boolean('is_active').notNull().default(true),
   finalizedAt: timestamp('finalized_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -515,12 +544,16 @@ export const stockOpnameRelations = relations(stockOpname, ({ one, many }) => ({
   warehouse: one(warehouses, {
     fields: [stockOpname.warehouseId],
     references: [warehouses.id],
+    relationName: 'stockOpnames',
   }),
   createdByUser: one(users, {
     fields: [stockOpname.createdBy],
     references: [users.id],
+    relationName: 'stockOpnamesCreated',
   }),
-  items: many(stockOpnameItems),
+  items: many(stockOpnameItems, {
+    relationName: 'stockOpnameItems',
+  }),
 }))
 
 export const stockOpnameItems = pgTable('stock_opname_items', {
@@ -538,11 +571,117 @@ export const stockOpnameItemsRelations = relations(stockOpnameItems, ({ one }) =
   opname: one(stockOpname, {
     fields: [stockOpnameItems.opnameId],
     references: [stockOpname.id],
+    relationName: 'stockOpnameItems',
   }),
   product: one(products, {
     fields: [stockOpnameItems.productId],
     references: [products.id],
+    relationName: 'stockOpnameItems',
   }),
 }))
 
+// ──────────────────────────────────────────────
+// Expenses (Pengeluaran Keuangan)
+// ──────────────────────────────────────────────
 
+export const expenseCategories = pgTable('expense_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const expenseCategoriesRelations = relations(expenseCategories, ({ many }) => ({
+  expenses: many(expenses, {
+    relationName: 'expenseCategory',
+  }),
+}))
+
+export const expenses = pgTable('expenses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // e.g., EXP-20240101-0001
+  date: timestamp('date').notNull().defaultNow(),
+  categoryId: uuid('category_id').notNull().references(() => expenseCategories.id),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  notes: text('notes'),
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull().default('cash'), // cash, transfer, credit
+  receiptUrl: varchar('receipt_url', { length: 500 }),
+  createdBy: uuid('created_by').references(() => users.id),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  category: one(expenseCategories, {
+    fields: [expenses.categoryId],
+    references: [expenseCategories.id],
+    relationName: 'expenseCategory',
+  }),
+  createdByUser: one(users, {
+    fields: [expenses.createdBy],
+    references: [users.id],
+    relationName: 'userExpenses',
+  }),
+}))
+
+// ──────────────────────────────────────────────
+// Receivables (Piutang / Kasbon Pelanggan)
+// ──────────────────────────────────────────────
+
+export const receivables = pgTable('receivables', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // e.g., REC-20240101-0001
+  transactionId: uuid('transaction_id').references(() => transactions.id), // Nullable if manual receivable
+  customerId: uuid('customer_id').notNull().references(() => customers.id),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(), // Total debt
+  remainingAmount: decimal('remaining_amount', { precision: 15, scale: 2 }).notNull(), // Debt left to pay
+  dueDate: timestamp('due_date'),
+  status: varchar('status', { length: 20 }).notNull().default('unpaid'), // unpaid, partial, paid
+  notes: text('notes'),
+  createdBy: uuid('created_by').references(() => users.id),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const receivablesRelations = relations(receivables, ({ one, many }) => ({
+  transaction: one(transactions, {
+    fields: [receivables.transactionId],
+    references: [transactions.id],
+  }),
+  customer: one(customers, {
+    fields: [receivables.customerId],
+    references: [customers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [receivables.createdBy],
+    references: [users.id],
+  }),
+  payments: many(receivablePayments),
+}))
+
+export const receivablePayments = pgTable('receivable_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  receivableId: uuid('receivable_id').notNull().references(() => receivables.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  paymentDate: timestamp('payment_date').notNull().defaultNow(),
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull().default('cash'), // cash, transfer
+  receivedBy: uuid('received_by').references(() => users.id),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const receivablePaymentsRelations = relations(receivablePayments, ({ one }) => ({
+  receivable: one(receivables, {
+    fields: [receivablePayments.receivableId],
+    references: [receivables.id],
+  }),
+  receivedByUser: one(users, {
+    fields: [receivablePayments.receivedBy],
+    references: [users.id],
+  }),
+}))

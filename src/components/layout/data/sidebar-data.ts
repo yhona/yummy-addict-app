@@ -24,6 +24,8 @@ import {
   Boxes,
   AlertTriangle,
   Wallet,
+  Clock,
+  RefreshCcw,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -42,17 +44,22 @@ export const sidebarData: SidebarData = {
   ],
   navGroups: [
     {
-      title: '1. Kasir & Utama',
+      title: '1. Utama / Kasir',
       items: [
         {
-          title: 'Dashboard',
-          url: '/',
-          icon: LayoutDashboard,
-        },
-        {
-          title: 'POS (Point of Sale)',
+          title: 'Kasir (POS)',
           url: '/pos',
           icon: ShoppingCart,
+        },
+        {
+          title: 'Riwayat Transaksi',
+          url: '/transactions',
+          icon: Clock,
+        },
+        {
+          title: 'Retur Penjualan',
+          url: '/returns',
+          icon: RefreshCcw,
         },
       ],
     },
@@ -84,14 +91,14 @@ export const sidebarData: SidebarData = {
               icon: GitBranch,
             },
             {
-              title: 'Paket / Bundling (TBA)',
-              url: '#',
+              title: 'Paket / Bundling',
+              url: '/inventory/products?type=bundle',
               icon: Boxes,
             },
           ],
         },
         {
-          title: 'Manajemen Inventori',
+          title: 'Inventori & Gudang',
           icon: Warehouse,
           items: [
             {
@@ -115,21 +122,21 @@ export const sidebarData: SidebarData = {
               icon: Warehouse,
             },
             {
-              title: 'Barang Expired/Rusak',
-              url: '/inventory/rejected',
-              icon: AlertTriangle,
-            },
-            {
               title: 'Transfer Gudang',
               url: '/inventory/transfer',
               icon: Truck,
+            },
+            {
+              title: 'Barang Expired/Rusak',
+              url: '/inventory/rejected',
+              icon: AlertTriangle,
             },
           ],
         },
       ],
     },
     {
-      title: '3. Transaksi & Pengiriman',
+      title: '3. Transaksi & Operasional',
       items: [
         {
           title: 'Penjualan',
@@ -151,35 +158,14 @@ export const sidebarData: SidebarData = {
               icon: RotateCcw,
             },
             {
-              title: 'Piutang Kasbon (TBA)',
-              url: '#',
+              title: 'Piutang / Kasbon',
+              url: '/finance/receivables',
               icon: BookOpen,
             },
           ],
         },
         {
-          title: 'Pengiriman',
-          icon: Truck,
-          items: [
-            {
-              title: 'Data Kurir',
-              url: '/settings/couriers',
-              icon: Truck,
-            },
-            {
-              title: 'Tracking Resi (TBA)',
-              url: '#',
-              icon: Truck,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      title: '4. Pembelian & Supplier',
-      items: [
-        {
-          title: 'Purchasing',
+          title: 'Pembelian & Supplier',
           icon: ShoppingBag,
           items: [
             {
@@ -188,28 +174,12 @@ export const sidebarData: SidebarData = {
               icon: FileCheck,
             },
             {
-              title: 'Buat PO Baru',
-              url: '/purchasing/orders/new',
-              icon: ClipboardList,
-            },
-          ],
-        },
-        {
-          title: 'Supplier',
-          icon: Truck,
-          items: [
-            {
               title: 'Data Supplier',
               url: '/purchasing/suppliers',
-              icon: Truck,
+              icon: Building2,
             },
           ],
         },
-      ],
-    },
-    {
-      title: '5. Pengiriman',
-      items: [
         {
           title: 'Pengiriman',
           icon: Truck,
@@ -227,54 +197,17 @@ export const sidebarData: SidebarData = {
             {
               title: 'Manajemen Kurir',
               url: '/settings/couriers',
-              icon: ShoppingBag,
+              icon: Truck,
             },
           ],
         },
       ],
     },
     {
-      title: '6. Relasi & Pegawai',
+      title: '4. Keuangan & Laporan',
       items: [
         {
-          title: 'Pelanggan (CRM)',
-          icon: Users,
-          items: [
-            {
-              title: 'Data Pelanggan',
-              url: '/customers',
-              icon: Users,
-            },
-            {
-              title: 'Program Loyalitas (TBA)',
-              url: '#',
-              icon: Palette,
-            },
-          ],
-        },
-        {
-          title: 'Karyawan (SDM)',
-          icon: UserCog,
-          items: [
-            {
-              title: 'Data Karyawan & Akses',
-              url: '#',
-              icon: Users,
-            },
-            {
-              title: 'Shift Kasir (TBA)',
-              url: '#',
-              icon: ClipboardList,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      title: '6. Akuntansi & Laporan',
-      items: [
-        {
-          title: 'Keuangan',
+          title: 'Akuntansi',
           icon: Calculator,
           items: [
             {
@@ -288,18 +221,23 @@ export const sidebarData: SidebarData = {
               icon: FileText,
             },
             {
-              title: 'Pengeluaran/Expenses (TBA)',
-              url: '#',
-              icon: Calculator,
+              title: 'Kategori Pengeluaran',
+              url: '/finance/expenses/categories',
+              icon: Layers,
+            },
+            {
+              title: 'Data Pengeluaran',
+              url: '/finance/expenses',
+              icon: Wallet,
             },
           ],
         },
         {
-          title: 'Laporan (Reports)',
+          title: 'Pusat Laporan',
           icon: BarChart3,
           items: [
             {
-              title: 'Dashboard Laporan (Master)',
+              title: 'Dashboard Laporan',
               url: '/reports',
               icon: LayoutDashboard,
             },
@@ -318,27 +256,49 @@ export const sidebarData: SidebarData = {
               url: '/reports/inventory',
               icon: Package,
             },
+          ],
+        },
+      ],
+    },
+    {
+      title: '5. SDM & Ekosistem',
+      items: [
+        {
+          title: 'Pelanggan (CRM)',
+          icon: Users,
+          items: [
             {
-              title: 'Piutang Pelanggan',
-              url: '/reports/receivable',
-              icon: Wallet,
+              title: 'Data Pelanggan',
+              url: '/customers',
+              icon: Users,
             },
             {
-              title: 'Hutang Usaha',
-              url: '/reports/payable',
-              icon: Calculator,
+              title: 'Customer Loyalty (TBA)',
+              url: '#',
+              icon: Palette,
+            },
+          ],
+        },
+        {
+          title: 'Karyawan (SDM)',
+          icon: UserCog,
+          items: [
+            {
+              title: 'Data Karyawan',
+              url: '#',
+              icon: Users,
             },
             {
-              title: 'Pengiriman',
-              url: '/reports/shipping',
-              icon: Truck,
+              title: 'Atur Shift (TBA)',
+              url: '#',
+              icon: ClipboardList,
             },
           ],
         },
       ],
     },
     {
-      title: '7. Sistem',
+      title: '6. Sistem',
       items: [
         {
           title: 'Pengaturan',

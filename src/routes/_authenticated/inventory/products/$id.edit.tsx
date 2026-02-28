@@ -76,6 +76,8 @@ function EditProductPage() {
           maxStock: data.maxStock ?? null,
           trackInventory: data.trackInventory,
           isActive: data.isActive,
+          type: data.type,
+          bundleItems: data.type === 'bundle' ? data.bundleItems : undefined,
           isBulk: data.isBulk,
           conversionRatio: data.conversionRatio ?? null,
           parentId: data.parentId === 'none' ? null : data.parentId,
@@ -157,6 +159,11 @@ function EditProductPage() {
         minStock: product.minStock,
         maxStock: product.maxStock ? (typeof product.maxStock === 'string' ? parseFloat(product.maxStock) : product.maxStock) : null,
         trackInventory: product.trackInventory,
+        type: product.type || 'standard',
+        bundleItems: product.bundleItems?.map((b) => ({
+          productId: b.productId,
+          quantity: b.quantity,
+        })) || [],
         isBulk: product.isBulk,
         conversionRatio: product.conversionRatio ? (typeof product.conversionRatio === 'string' ? parseFloat(product.conversionRatio) : product.conversionRatio) : null,
         parentId: product.parentId || null,
@@ -243,6 +250,7 @@ function EditProductPage() {
               categories={categories}
               units={units}
               bulkProducts={bulkProducts}
+              products={allProducts.map((p) => ({ id: p.id, name: p.name, sku: p.sku }))}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
               isLoading={updateProduct.isPending}

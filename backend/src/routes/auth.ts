@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { sign, verify } from 'jsonwebtoken'
+import { sign, verify } from 'hono/jwt'
 import bcrypt from 'bcrypt'
 import { db } from '../db'
 import { users } from '../db/schema'
@@ -48,11 +48,14 @@ authRoutes.post('/login', async (c) => {
       return c.json({ error: 'Account is disabled' }, 401)
     }
 
-    // Generate token
-    const token = sign(
-      { userId: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+    const token = await sign(
+      { 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role,
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days expiration
+      },
+      JWT_SECRET
     )
 
     return c.json({
@@ -125,7 +128,7 @@ authRoutes.get('/me', async (c) => {
 
   try {
     const token = authHeader.slice(7)
-    const decoded = verify(token, JWT_SECRET) as { userId: string }
+    const decoded = await verify(token, JWT_SECRET) as { userId: string }
 
     const user = await db.query.users.findFirst({
       where: eq(users.id, decoded.userId),

@@ -41,7 +41,7 @@ opnameRoutes.get('/', async (c) => {
     const offset = (pageNum - 1) * limitNum
 
     // Build WHERE conditions
-    const conditions = []
+    const conditions = [eq(stockOpname.isActive, true)]
     if (warehouseId) conditions.push(eq(stockOpname.warehouseId, warehouseId))
     if (status) conditions.push(eq(stockOpname.status, status))
 
@@ -70,23 +70,25 @@ opnameRoutes.get('/', async (c) => {
       .offset(offset)
 
     // Count total
-    const [{ total }] = await db
+    const [result] = await db
       .select({ total: count() })
       .from(stockOpname)
       .where(whereClause)
+
+    const totalStr = result?.total || 0
 
     return c.json({
       data: sessions,
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total: Number(total),
-        totalPages: Math.ceil(Number(total) / limitNum),
+        total: Number(totalStr),
+        totalPages: Math.ceil(Number(totalStr) / limitNum),
       },
     })
   } catch (error) {
     console.error('List opname error:', error)
-    return c.json({ error: 'Failed to list opname sessions' }, 500)
+    return c.json({ message: 'Failed to list opname sessions' }, 500)
   }
 })
 
@@ -126,7 +128,7 @@ opnameRoutes.post('/', async (c) => {
       if (productsWithStock.length > 0) {
         await tx.insert(stockOpnameItems).values(
           productsWithStock.map((p) => ({
-            opnameId: session.id,
+            opnameId: session!.id,
             productId: p.productId,
             systemQty: p.quantity || 0,
             physicalQty: null,
@@ -141,10 +143,10 @@ opnameRoutes.post('/', async (c) => {
     return c.json(result, 201)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json({ error: 'Validation error', details: error.issues }, 400)
+      return c.json({ message: 'Validation error', details: error.issues }, 400)
     }
     console.error('Create opname error:', error)
-    return c.json({ error: 'Failed to create opname session' }, 500)
+    return c.json({ message: 'Failed to create opname session' }, 500)
   }
 })
 
@@ -168,11 +170,11 @@ opnameRoutes.get('/:id', async (c) => {
       })
       .from(stockOpname)
       .leftJoin(warehouses, eq(stockOpname.warehouseId, warehouses.id))
-      .where(eq(stockOpname.id, id))
+      .where(and(eq(stockOpname.id, id), eq(stockOpname.isActive, true)))
       .limit(1)
 
     if (session.length === 0) {
-      return c.json({ error: 'Opname session not found' }, 404)
+      return c.json({ message: 'Opname session not found' }, 404)
     }
 
     // Fetch items with product info
@@ -207,7 +209,7 @@ opnameRoutes.get('/:id', async (c) => {
     })
   } catch (error) {
     console.error('Get opname detail error:', error)
-    return c.json({ error: 'Failed to get opname detail' }, 500)
+    return c.json({ message: 'Failed to get opname detail' }, 500)
   }
 })
 
@@ -219,16 +221,16 @@ opnameRoutes.put('/:id/items', async (c) => {
     const body = await c.req.json()
     const data = updateItemsSchema.parse(body)
 
-    // Validate session exists & not finalized
+    // Validate session exists & not finalized & active
     const session = await db.query.stockOpname.findFirst({
-      where: eq(stockOpname.id, id),
+      where: and(eq(stockOpname.id, id), eq(stockOpname.isActive, true)),
     })
 
     if (!session) {
-      return c.json({ error: 'Opname session not found' }, 404)
+      return c.json({ message: 'Opname session not found' }, 404)
     }
     if (session.status === 'finalized') {
-      return c.json({ error: 'Cannot update finalized opname' }, 400)
+      return c.json({ message: 'Cannot update finalized opname' }, 400)
     }
 
     // Update each item
@@ -260,10 +262,10 @@ opnameRoutes.put('/:id/items', async (c) => {
     return c.json({ updated })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json({ error: 'Validation error', details: error.issues }, 400)
+      return c.json({ message: 'Validation error', details: error.issues }, 400)
     }
     console.error('Update opname items error:', error)
-    return c.json({ error: 'Failed to update opname items' }, 500)
+    return c.json({ message: 'Failed to update opname items' }, 500)
   }
 })
 
@@ -275,11 +277,11 @@ opnameRoutes.post('/:id/finalize', async (c) => {
 
     // 1. Validate session
     const session = await db.query.stockOpname.findFirst({
-      where: eq(stockOpname.id, id),
+      where: and(eq(stockOpname.id, id), eq(stockOpname.isActive, true)),
     })
 
-    if (!session) return c.json({ error: 'Opname session not found' }, 404)
-    if (session.status === 'finalized') return c.json({ error: 'Already finalized' }, 400)
+    if (!session) return c.json({ message: 'Opname session not found' }, 404)
+    if (session.status === 'finalized') return c.json({ message: 'Already finalized' }, 400)
 
     // 2. Fetch all items
     const items = await db
@@ -291,7 +293,7 @@ opnameRoutes.post('/:id/finalize', async (c) => {
     const uncountedItems = items.filter(i => i.physicalQty === null)
     if (uncountedItems.length > 0) {
       return c.json({
-        error: `${uncountedItems.length} item(s) belum dihitung. Hitung semua item sebelum finalisasi.`,
+        message: `${uncountedItems.length} item(s) belum dihitung. Hitung semua item sebelum finalisasi.`,
       }, 400)
     }
 
@@ -366,7 +368,7 @@ opnameRoutes.post('/:id/finalize', async (c) => {
     })
   } catch (error) {
     console.error('Finalize opname error:', error)
-    return c.json({ error: 'Failed to finalize opname' }, 500)
+    return c.json({ message: 'Failed to finalize opname' }, 500)
   }
 })
 
@@ -377,22 +379,21 @@ opnameRoutes.delete('/:id', async (c) => {
     const id = c.req.param('id')
 
     const session = await db.query.stockOpname.findFirst({
-      where: eq(stockOpname.id, id),
+      where: and(eq(stockOpname.id, id), eq(stockOpname.isActive, true)),
     })
 
-    if (!session) return c.json({ error: 'Opname session not found' }, 404)
+    if (!session) return c.json({ message: 'Opname session not found' }, 404)
     if (session.status === 'finalized') {
-      return c.json({ error: 'Cannot delete finalized opname' }, 400)
+      return c.json({ message: 'Cannot delete finalized opname' }, 400)
     }
 
-    // Cascade: delete items first, then session
-    await db.delete(stockOpnameItems).where(eq(stockOpnameItems.opnameId, id))
-    await db.delete(stockOpname).where(eq(stockOpname.id, id))
+    // Soft delete session
+    await db.update(stockOpname).set({ isActive: false }).where(eq(stockOpname.id, id))
 
     return c.json({ message: 'Opname session deleted' })
   } catch (error) {
     console.error('Delete opname error:', error)
-    return c.json({ error: 'Failed to delete opname' }, 500)
+    return c.json({ message: 'Failed to delete opname' }, 500)
   }
 })
 

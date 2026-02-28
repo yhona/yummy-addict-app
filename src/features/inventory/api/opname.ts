@@ -1,95 +1,113 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
-import type { OpnameSession, OpnameItem, OpnameSummary } from '../types'
-import { stockKeys, movementKeys } from './stock'
+import { OpnameSession, OpnameItem } from '../types'
 
-// Types
-interface OpnameDetailResponse extends OpnameSession {
-  items: OpnameItem[]
+// Extended interface for creation wrapper
+export interface CreateOpnameRequest {
+  warehouseId: string
+  notes?: string
 }
 
-interface OpnameListResponse {
-  data: OpnameSession[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
+export interface UpdateOpnameItemRequest {
+  physicalQty: number | null
+  notes?: string
 }
 
-// Query Keys
+// Query keys
 export const opnameKeys = {
-  all: ['opname'] as const,
-  list: (params?: object) => [...opnameKeys.all, 'list', params] as const,
-  detail: (id: string) => [...opnameKeys.all, 'detail', id] as const,
+  all: ['opnames'] as const,
+  lists: () => [...opnameKeys.all, 'list'] as const,
+  list: (params?: { status?: string; warehouseId?: string }) =>
+    [...opnameKeys.lists(), params] as const,
+  details: () => [...opnameKeys.all, 'detail'] as const,
+  detail: (id: string) => [...opnameKeys.details(), id] as const,
 }
 
-// ── List opname sessions ────────────────────────
+// Helpers
+const toRecord = (params: any) => {
+  const result: Record<string, string | number | boolean> = {}
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      result[key] = value as string | number | boolean
+    }
+  })
+  return result
+}
 
-export function useOpnames(params?: { page?: number; limit?: number; warehouseId?: string; status?: string }) {
+// Hooks
+export function useOpnameList(params?: {
+  status?: string
+  warehouseId?: string
+}) {
   return useQuery({
     queryKey: opnameKeys.list(params),
-    queryFn: () => api.get<OpnameListResponse>('/api/opname', params),
+    queryFn: () => {
+      const queryParams = params ? toRecord(params) : undefined
+      return api.get<OpnameSession[]>('/api/opname', queryParams)
+    },
   })
 }
 
-// ── Detail opname session + items ───────────────
-
-export function useOpname(id: string) {
+export function useOpnameDetail(id: string) {
   return useQuery({
     queryKey: opnameKeys.detail(id),
-    queryFn: () => api.get<OpnameDetailResponse>(`/api/opname/${id}`),
+    queryFn: () =>
+      api.get<
+        OpnameSession & {
+          items: OpnameItem[]
+        }
+      >(`/api/opname/${id}`),
     enabled: !!id,
   })
 }
-
-// ── Create new opname session ───────────────────
 
 export function useCreateOpname() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { warehouseId: string; notes?: string }) =>
+    mutationFn: (data: CreateOpnameRequest) =>
       api.post<OpnameSession>('/api/opname', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: opnameKeys.all })
+      queryClient.invalidateQueries({ queryKey: opnameKeys.lists() })
     },
   })
 }
 
-// ── Update counted items ────────────────────────
-
-export function useUpdateOpnameItems(opnameId: string) {
+export function useUpdateOpnameItem() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { items: Array<{ id: string; physicalQty: number; notes?: string }> }) =>
-      api.put<{ updated: OpnameItem[] }>(`/api/opname/${opnameId}/items`, data),
-    onSuccess: () => {
+    mutationFn: ({
+      opnameId,
+      itemId,
+      data,
+    }: {
+      opnameId: string
+      itemId: string
+      data: UpdateOpnameItemRequest
+    }) => api.put<{ updated: OpnameItem[] }>(`/api/opname/${opnameId}/items`, { 
+      items: [{ id: itemId, ...data }] 
+    }),
+    onSuccess: (_, { opnameId }) => {
       queryClient.invalidateQueries({ queryKey: opnameKeys.detail(opnameId) })
     },
   })
 }
 
-// ── Finalize opname ─────────────────────────────
-
-export function useFinalizeOpname(opnameId: string) {
+export function useFinalizeOpname() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () =>
-      api.post<{ message: string; summary: OpnameSummary }>(`/api/opname/${opnameId}/finalize`, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: opnameKeys.all })
-      queryClient.invalidateQueries({ queryKey: stockKeys.all })
-      queryClient.invalidateQueries({ queryKey: movementKeys.all })
-      queryClient.invalidateQueries({ queryKey: ['products'] })
+    mutationFn: (id: string) =>
+      api.post<{ message: string; session: OpnameSession }>(
+        `/api/opname/${id}/finalize`
+      ),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: opnameKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: opnameKeys.detail(id) })
     },
   })
 }
-
-// ── Delete opname ───────────────────────────────
 
 export function useDeleteOpname() {
   const queryClient = useQueryClient()
@@ -97,7 +115,7 @@ export function useDeleteOpname() {
   return useMutation({
     mutationFn: (id: string) => api.delete<{ message: string }>(`/api/opname/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: opnameKeys.all })
+      queryClient.invalidateQueries({ queryKey: opnameKeys.lists() })
     },
   })
 }

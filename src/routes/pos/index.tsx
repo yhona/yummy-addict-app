@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useProducts, useCategories } from '@/features/inventory/api'
 import { useCartStore } from '@/features/pos/store/cart-store'
 import { ProductCard } from '@/features/pos/components/product-card'
 import { CartPanel } from '@/features/pos/components/cart-panel'
-import { CheckoutDialog } from '@/features/pos/components/checkout-dialog'
+
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { Search, Loader2, ScanBarcode } from 'lucide-react'
+import { Search, Loader2, ScanBarcode, Home } from 'lucide-react'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useBarcodeScanner } from '@/features/pos/hooks/use-barcode-scanner'
 import { toast } from 'sonner'
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/pos/')({
 function PosPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
-  const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const navigate = useNavigate()
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>()
   
   
@@ -60,14 +60,14 @@ function PosPage() {
                  </a>
                  <Button variant="ghost" size="sm" asChild>
                    <a href="/">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                     Menu
+                     <Home className="mr-2 h-4 w-4" />
+                     Menu Utama
                    </a>
                  </Button>
                  <div className="relative flex-1 max-w-md">
                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                      <Input 
-                        placeholder="Search products..." 
+                        placeholder="Cari produk..."  
                         className="pl-9 h-10 w-full bg-muted/50 focus:bg-background transition-colors"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -87,7 +87,7 @@ function PosPage() {
                         onClick={() => setSelectedCategory(undefined)} 
                         className="rounded-full"
                     >
-                        All Items
+                        Semua Produk
                     </Button>
                     {categories?.map(cat => (
                         <Button 
@@ -109,7 +109,7 @@ function PosPage() {
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {isLoading ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <Loader2 className="h-8 w-8 animate-spin mr-2" /> Loading products...
+                    <Loader2 className="h-8 w-8 animate-spin mr-2" /> Memuat produk...
                 </div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pb-20">
@@ -120,8 +120,8 @@ function PosPage() {
                      ))}
                      {productsData?.data.length === 0 && (
                          <div className="col-span-full flex flex-col items-center justify-center h-60 text-muted-foreground">
-                             <p className="text-lg font-medium">No products found</p>
-                             <p className="text-sm">Try adjusting your search</p>
+                             <p className="text-lg font-medium">Produk tidak ditemukan</p>
+                             <p className="text-sm">Coba sesuaikan pencarian Anda</p>
                          </div>
                      )}
                 </div>
@@ -131,10 +131,8 @@ function PosPage() {
 
       {/* Cart Area */}
       <div className="w-[400px] h-full flex-shrink-0">
-         <CartPanel onCheckout={() => setCheckoutOpen(true)} />
+         <CartPanel onCheckout={() => navigate({ to: '/pos/checkout' })} />
       </div>
-      
-      <CheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} />
     </div>
   )
 }

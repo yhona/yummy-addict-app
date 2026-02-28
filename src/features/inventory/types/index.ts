@@ -11,6 +11,7 @@ export interface Product {
   unitId?: string
   unitName?: string
   productType: 'inventory' | 'service' | 'non_inventory'
+  type?: 'standard' | 'bundle'
   costPrice: number
   sellingPrice: number
   wholesalePrice?: number
@@ -27,6 +28,11 @@ export interface Product {
   parentId?: string
   parentName?: string
   variants?: Product[]
+  bundleItems?: {
+    productId: string
+    quantity: number
+    product?: Product
+  }[]
   stockDetails?: ProductStockDetail[]
   createdAt: string
   updatedAt: string
@@ -82,6 +88,7 @@ export interface ProductFormData {
   categoryId?: string
   unitId?: string
   productType: 'inventory' | 'service' | 'non_inventory'
+  type: 'standard' | 'bundle'
   costPrice: number
   sellingPrice: number
   wholesalePrice?: number
@@ -93,6 +100,10 @@ export interface ProductFormData {
   isBulk: boolean
   conversionRatio: number
   parentId?: string
+  bundleItems?: {
+    productId: string
+    quantity: number
+  }[]
 }
 
 // Filter types

@@ -15,8 +15,8 @@ import { CustomerSelector } from './customer-selector'
 import { ReceiptDialog } from './receipt-dialog'
 
 export function CheckoutDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
-  const { items, getTotal, clearCart } = useCartStore()
-  const total = getTotal()
+  const { cart, clearCart } = useCartStore()
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qris' | 'transfer'>('cash')
   const [cashGiven, setCashGiven] = useState('')
@@ -38,8 +38,8 @@ export function CheckoutDialog({ open, onOpenChange }: { open: boolean, onOpenCh
       }
       
       createTransaction.mutate({
-          items: items.map(i => ({
-              productId: i.product.id,
+          items: cart.map(i => ({
+              productId: i.productId,
               quantity: i.quantity,
               price: i.price
           })),

@@ -31,6 +31,12 @@ export interface ApiProduct {
   hasVariants: boolean
   trackInventory: boolean
   productType: 'inventory' | 'service' | 'non_inventory'
+  type: 'standard' | 'bundle'
+  bundleItems?: {
+    productId: string
+    quantity: number
+    product?: ApiProduct
+  }[]
   variants?: ApiProduct[]
   parent?: ApiProduct | null
   isActive: boolean
@@ -126,6 +132,11 @@ export interface ProductCreateRequest {
   isBulk?: boolean
   trackInventory?: boolean
   isActive?: boolean
+  type?: 'standard' | 'bundle'
+  bundleItems?: {
+    productId: string
+    quantity: number
+  }[]
 }
 
 export interface CategoryCreateRequest {
@@ -176,6 +187,12 @@ export interface Transaction {
   notes?: string
   items?: TransactionItem[]
   cashier?: ApiUser
+  customer?: Customer
+  deliveryMethod?: 'pickup' | 'delivery'
+  shippingCost?: number
+  courierName?: string
+  trackingNumber?: string
+  shippingAddress?: string
 }
 
 export interface CreateTransactionRequest {
@@ -184,13 +201,19 @@ export interface CreateTransactionRequest {
     quantity: number
     price: number
   }[]
-  paymentMethod: 'cash' | 'card' | 'qris' | 'transfer'
+  paymentMethod: 'cash' | 'qris' | 'transfer' | 'debt'
   cashAmount?: number
   discountAmount?: number
   cashierId?: string
   customerId?: string
   notes?: string
   shiftId?: string
+  // Delivery / Shipping
+  deliveryMethod?: 'pickup' | 'delivery'
+  shippingCost?: number
+  courierName?: string
+  trackingNumber?: string
+  shippingAddress?: string
 }
 
 // Suppliers

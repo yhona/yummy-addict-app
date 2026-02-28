@@ -171,6 +171,7 @@ function NewProductPage() {
               categories={categories}
               units={units}
               bulkProducts={bulkProducts}
+              products={allProducts.map((p) => ({ id: p.id, name: p.name, sku: p.sku }))}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
               isLoading={createProduct.isPending}

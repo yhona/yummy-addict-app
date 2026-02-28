@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { products, categories, units, productStock, stockMovements } from '../db/schema'
+import { products, categories, units, productStock, stockMovements, bundleItems } from '../db/schema'
 import { eq, like, and, sql, desc } from 'drizzle-orm'
 import { z } from 'zod'
 
@@ -14,6 +14,7 @@ const productSchema = z.object({
   description: z.string().optional(),
   categoryId: z.string().uuid().optional(),
   unitId: z.string().uuid().optional(),
+  type: z.enum(['standard', 'bundle']).default('standard'),
   costPrice: z.number().min(0).default(0),
   sellingPrice: z.number().min(0).default(0),
   minStock: z.number().int().min(0).default(0),
@@ -23,6 +24,10 @@ const productSchema = z.object({
   isBulk: z.boolean().default(false),
   conversionRatio: z.number().min(0).optional().nullable(),
   isActive: z.boolean().default(true),
+  bundleItems: z.array(z.object({
+    productId: z.string().uuid(),
+    quantity: z.number().int().min(1),
+  })).optional(),
 })
 
 // List products with pagination and filters
@@ -32,6 +37,7 @@ productsRoutes.get('/', async (c) => {
     const limit = Number(c.req.query('limit') || 10)
     const search = c.req.query('search') || ''
     const categoryId = c.req.query('categoryId')
+    const type = c.req.query('type')
     const status = c.req.query('status')
 
     const offset = (page - 1) * limit
@@ -45,6 +51,9 @@ productsRoutes.get('/', async (c) => {
     }
     if (categoryId) {
       conditions.push(eq(products.categoryId, categoryId))
+    }
+    if (type) {
+      conditions.push(eq(products.type, type))
     }
     if (status === 'active') {
       conditions.push(eq(products.isActive, true))
@@ -62,6 +71,9 @@ productsRoutes.get('/', async (c) => {
         variants: true,
         parent: true,
         unit: true,
+        bundleItems: {
+          with: { product: true }
+        },
         stock: {
           with: {
             warehouse: true,
@@ -109,6 +121,9 @@ productsRoutes.get('/:id', async (c) => {
       with: {
         category: true,
         unit: true,
+        bundleItems: {
+          with: { product: true }
+        },
         stock: {
           with: {
             warehouse: true,
@@ -148,12 +163,29 @@ productsRoutes.post('/', async (c) => {
       return c.json({ error: 'SKU already exists' }, 400)
     }
 
-    const [newProduct] = await db.insert(products).values({
-      ...data,
-      costPrice: String(data.costPrice),
-      sellingPrice: String(data.sellingPrice),
-      conversionRatio: data.conversionRatio ? String(data.conversionRatio) : undefined,
-    }).returning()
+    const newProduct = await db.transaction(async (tx) => {
+      // 1. Insert product
+      const { bundleItems: itemsToBundle, ...productData } = data
+      const [insertedProduct] = await tx.insert(products).values({
+        ...productData,
+        costPrice: String(productData.costPrice),
+        sellingPrice: String(productData.sellingPrice),
+        conversionRatio: productData.conversionRatio ? String(productData.conversionRatio) : undefined,
+      }).returning()
+
+      // 2. Insert bundle items if type='bundle'
+      if (insertedProduct && productData.type === 'bundle' && itemsToBundle && itemsToBundle.length > 0) {
+        await tx.insert(bundleItems).values(
+          itemsToBundle.map(item => ({
+            bundleId: insertedProduct.id,
+            productId: item.productId,
+            quantity: item.quantity,
+          }))
+        )
+      }
+
+      return insertedProduct
+    })
 
     return c.json(newProduct, 201)
   } catch (error) {
@@ -172,17 +204,42 @@ productsRoutes.put('/:id', async (c) => {
     const body = await c.req.json()
     const data = productSchema.partial().parse(body)
 
-    const [updated] = await db
-      .update(products)
-      .set({
-        ...data,
-        costPrice: data.costPrice !== undefined ? String(data.costPrice) : undefined,
-        sellingPrice: data.sellingPrice !== undefined ? String(data.sellingPrice) : undefined,
-        conversionRatio: data.conversionRatio !== undefined ? String(data.conversionRatio) : undefined,
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, id))
-      .returning()
+    const updated = await db.transaction(async (tx) => {
+      const { bundleItems: itemsToBundle, ...productData } = data
+      
+      const [updatedProduct] = await tx
+        .update(products)
+        .set({
+          ...productData,
+          costPrice: productData.costPrice !== undefined ? String(productData.costPrice) : undefined,
+          sellingPrice: productData.sellingPrice !== undefined ? String(productData.sellingPrice) : undefined,
+          conversionRatio: productData.conversionRatio !== undefined ? String(productData.conversionRatio) : undefined,
+          updatedAt: new Date(),
+        })
+        .where(eq(products.id, id))
+        .returning()
+
+      if (!updatedProduct) return null
+
+      // Handle bundle items update
+      if (updatedProduct.type === 'bundle' && itemsToBundle !== undefined) {
+        // Delete all existing bundle items
+        await tx.delete(bundleItems).where(eq(bundleItems.bundleId, id))
+        
+        // Insert new bundle items
+        if (itemsToBundle.length > 0) {
+          await tx.insert(bundleItems).values(
+            itemsToBundle.map(item => ({
+              bundleId: id,
+              productId: item.productId,
+              quantity: item.quantity,
+            }))
+          )
+        }
+      }
+
+      return updatedProduct
+    })
 
     if (!updated) {
       return c.json({ error: 'Product not found' }, 404)
@@ -198,16 +255,17 @@ productsRoutes.put('/:id', async (c) => {
   }
 })
 
-// Delete product
+// Delete product (Soft Delete)
 productsRoutes.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id')
 
-    // Delete stock records first
-    await db.delete(productStock).where(eq(productStock.productId, id))
-
     const [deleted] = await db
-      .delete(products)
+      .update(products)
+      .set({ 
+        isActive: false,
+        updatedAt: new Date()
+      })
       .where(eq(products.id, id))
       .returning()
 
@@ -215,10 +273,10 @@ productsRoutes.delete('/:id', async (c) => {
       return c.json({ error: 'Product not found' }, 404)
     }
 
-    return c.json({ message: 'Product deleted' })
+    return c.json({ message: 'Product deactivated successfully' })
   } catch (error) {
     console.error('Delete product error:', error)
-    return c.json({ error: 'Failed to delete product' }, 500)
+    return c.json({ error: 'Failed to deactivate product' }, 500)
   }
 })
 

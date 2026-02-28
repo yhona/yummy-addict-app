@@ -41,9 +41,11 @@ function CategoriesPage() {
     name: c.name,
     description: c.description || undefined,
     parentId: c.parentId || undefined,
+    parentName: (c as any).parentName,
     isActive: c.isActive,
     productCount: c.productCount || 0,
     subcategoryCount: c.subcategoryCount || 0,
+    childrenCount: c.subcategoryCount || 0,
     level: 0,
   }))
 
@@ -79,12 +81,14 @@ function CategoriesPage() {
         })
         toast.success('Category created successfully!')
       }
-
-      setDialogOpen(false)
-      setEditingCategory(undefined)
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save category')
+      // Global errorHandler takes care of the toast,
+      // Just prevent the dialog from closing and resetting
+      return
     }
+
+    setDialogOpen(false)
+    setEditingCategory(undefined)
   }
 
   const handleEditCategory = (category: Category) => {
@@ -95,9 +99,10 @@ function CategoriesPage() {
   const handleDeleteCategory = async (category: Category) => {
     try {
       await deleteCategory.mutateAsync(category.id)
-      toast.success(`Category "${category.name}" deleted successfully`)
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to delete category')
+      // Global handler will show toast, we just need to rethrow it
+      // so the data row component doesn't show a false success!
+      throw error
     }
   }
 

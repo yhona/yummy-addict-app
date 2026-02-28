@@ -83,9 +83,9 @@ export function ProductsTable<TData, TValue>({
         await onBulkDelete(products)
         setShowBulkDeleteDialog(false)
         setRowSelection({})
-        toast.success(`${products.length} products deleted successfully`)
+        toast.success(`${products.length} products deactivated successfully`)
       } catch {
-        toast.error('Failed to delete products')
+        toast.error('Failed to deactivate products')
       } finally {
         setIsBulkDeleting(false)
       }
@@ -153,7 +153,7 @@ export function ProductsTable<TData, TValue>({
               onClick={() => setShowBulkDeleteDialog(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete Selected
+              Nonaktifkan Terpilih
             </Button>
           </div>
         </div>
@@ -224,8 +224,8 @@ export function ProductsTable<TData, TValue>({
       <ConfirmDeleteDialog
         open={showBulkDeleteDialog}
         onOpenChange={setShowBulkDeleteDialog}
-        title="Delete Selected Products"
-        description={`This will permanently delete ${selectedRows.length} selected product(s). This action cannot be undone.`}
+        title="Nonaktifkan Produk Terpilih"
+        description={`Anda akan menonaktifkan ${selectedRows.length} produk. Produk-produk ini tidak akan muncul lagi di halaman Transaksi, tetapi data logistik dan historisnya tetap aman.`}
         onConfirm={handleBulkDelete}
         isLoading={isBulkDeleting}
       />

@@ -1,83 +1,60 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
+import { SalesReturn, CreateReturnRequest } from '../types'
+import { Transaction } from '@/features/pos/types'
 
-interface ReturnItem {
-  transactionItemId?: string
-  productId: string
-  quantity: number
-  price: number
+// Query keys
+export const returnKeys = {
+  all: ['returns'] as const,
+  lists: () => [...returnKeys.all, 'list'] as const,
+  list: (params?: { page?: number; limit?: number }) =>
+    [...returnKeys.lists(), params] as const,
+  details: () => [...returnKeys.all, 'detail'] as const,
+  detail: (id: string) => [...returnKeys.details(), id] as const,
+  searchTransaction: (number: string) => ['returns', 'search-transaction', number] as const,
 }
 
-interface CreateReturnRequest {
-  transactionId: string
-  items: ReturnItem[]
-  reason?: string
-  notes?: string
-  processedBy?: string
-}
+// Hooks
 
-interface SalesReturn {
-  id: string
-  number: string
-  transactionId: string
-  date: string
-  reason: string | null
-  totalAmount: string
-  status: string
-  processedBy: string | null
-  notes: string | null
-  transaction?: {
-    id: string
-    number: string
-  }
-  processedByUser?: {
-    id: string
-    name: string
-  }
-  items: {
-    id: string
-    productId: string
-    quantity: number
-    price: string
-    subtotal: string
-    product: {
-      id: string
-      name: string
-      sku: string
-    }
-  }[]
-}
-
-export const useReturns = (params?: { page?: number; limit?: number }) => {
-  return useQuery<{ data: SalesReturn[] }>({
-    queryKey: ['returns', params],
-    queryFn: async () => {
-      return api.get('/api/returns', params)
-    },
+export function useReturnList(params?: { page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: returnKeys.list(params),
+    queryFn: () => api.get<{ data: SalesReturn[] }>('/api/returns', params as Record<string, string | number>),
   })
 }
 
-export const useReturn = (id: string) => {
-  return useQuery<SalesReturn>({
-    queryKey: ['returns', id],
-    queryFn: async () => {
-      return api.get(`/api/returns/${id}`)
-    },
+export function useReturnDetail(id: string) {
+  return useQuery({
+    queryKey: returnKeys.detail(id),
+    queryFn: () => api.get<SalesReturn>(`/api/returns/${id}`),
     enabled: !!id,
   })
 }
 
-export const useCreateReturn = () => {
+export function useCreateReturn() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (data: CreateReturnRequest) => {
-      return api.post('/api/returns', data)
-    },
+    mutationFn: (data: CreateReturnRequest) =>
+      api.post<SalesReturn>('/api/returns', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['returns'] })
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['stock-movements'] })
+      queryClient.invalidateQueries({ queryKey: returnKeys.lists() })
     },
+  })
+}
+
+// Hook to search for a transaction by its number specifically for the returns flow
+export function useSearchTransaction() {
+  return useMutation({
+    mutationFn: (number: string) => 
+      // Using the existing GET /api/transactions with ?search= to find the transaction
+      // and asking back for an exact match.
+      api.get<{ data: Transaction[]; pagination: any }>('/api/transactions', { search: number })
+        .then(res => {
+          const exactMatch = res.data?.find((t: Transaction) => t.number === number)
+          if (!exactMatch) throw new Error('Transaksi tidak ditemukan atau nomor salah')
+          // Fetch full detail of that exact transaction
+          return api.get<Transaction>(`/api/transactions/${exactMatch.id}`)
+        })
   })
 }

@@ -25,6 +25,11 @@ export const productFormSchema = z.object({
     .string(),
   unitId: z
     .string(),
+  type: z.enum(['standard', 'bundle']).default('standard'),
+  bundleItems: z.array(z.object({
+    productId: z.string(),
+    quantity: z.number().min(1, 'Quantity must be at least 1')
+  })).optional(),
   productType: z.enum(['inventory', 'service', 'non_inventory']),
   costPrice: z
     .number({ message: 'Cost price is required' })
@@ -68,6 +73,8 @@ export const defaultProductValues: ProductFormValues = {
   image: null,
   categoryId: '',
   unitId: '',
+  type: 'standard',
+  bundleItems: [],
   productType: 'inventory',
   costPrice: 0,
   sellingPrice: 0,

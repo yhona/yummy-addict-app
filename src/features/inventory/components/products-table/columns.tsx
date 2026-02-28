@@ -121,6 +121,14 @@ export const columns: ColumnDef<Product>[] = [
                 Bulk
               </Badge>
             )}
+            {product.type === 'bundle' && (
+              <Badge
+                variant='secondary'
+                className='h-4 border-amber-200 bg-amber-100 px-1 text-[10px] uppercase text-amber-700 hover:bg-amber-200'
+              >
+                Bundle
+              </Badge>
+            )}
             {product.parentId && (
               <Badge
                 variant='secondary'

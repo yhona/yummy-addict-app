@@ -14,7 +14,7 @@ async function fetchOpenFoodFacts(barcode: string) {
   try {
     const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
     if (!res.ok) return null
-    const data = await res.json()
+    const data = await res.json() as any
     if (data.status === 1 && data.product) {
        return data.product.image_front_url || data.product.image_url || null
     }

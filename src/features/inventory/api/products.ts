@@ -22,6 +22,7 @@ export interface ProductsListParams {
   search?: string
   categoryId?: string
   status?: 'active' | 'inactive' | 'all'
+  type?: 'standard' | 'bundle'
 }
 
 // Hooks
@@ -35,6 +36,7 @@ export function useProducts(params: ProductsListParams = {}) {
         search: params.search,
         categoryId: params.categoryId,
         status: params.status,
+        type: params.type,
       }),
   })
 }

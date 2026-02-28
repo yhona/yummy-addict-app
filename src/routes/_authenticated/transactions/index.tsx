@@ -4,7 +4,6 @@ import {
   useTransactions, 
   useTransactionsSummary, 
   useCashiers, 
-  useVoidTransaction,
   TransactionsParams 
 } from '@/features/pos/api/transactions'
 import { formatCurrency } from '@/lib/utils'
@@ -13,7 +12,6 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Page, PageHeader, PageHeaderHeading, PageHeaderTitle, PageHeaderDescription, PageBody } from '@/components/layout/page'
-import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import {
   Select,
   SelectContent,
@@ -26,10 +24,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Calendar } from '@/components/ui/calendar'
 import { 
-  Eye, 
-  Loader2, 
   Search, 
   Calendar as CalendarIcon, 
   X, 
@@ -39,29 +41,171 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
-  Ban
+  Truck
 } from 'lucide-react'
-import { ReceiptDialog } from '@/features/pos/components/receipt-dialog'
-import { toast } from 'sonner'
+import { TransactionDetailSheet } from '@/features/pos/components/transaction-detail-sheet'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
+import { ColumnDef } from '@tanstack/react-table'
+import { DataTable } from '@/components/ui/data-table'
+import { Transaction } from '@/lib/api-types'
+
+// Setup Columns for TanStack Table
+const columns: ColumnDef<Transaction>[] = [
+  {
+    accessorKey: 'number',
+    header: 'No. Transaksi',
+    cell: ({ row }) => <div className="font-mono font-medium text-primary whitespace-nowrap">{row.original.number}</div>,
+  },
+  {
+    accessorKey: 'date',
+    header: 'Tanggal',
+    cell: ({ row }) => (
+      <div className="text-muted-foreground whitespace-nowrap">
+        {format(new Date(row.original.date), 'dd/MM/yyyy HH:mm')}
+      </div>
+    ),
+  },
+  {
+    id: 'customer',
+    header: 'Pelanggan',
+    cell: ({ row }) => <div>{row.original.customer?.name || 'Umum'}</div>,
+  },
+  {
+    id: 'cashier',
+    header: 'Kasir',
+    cell: ({ row }) => <div>{row.original.cashier?.name || '-'}</div>,
+  },
+  {
+    accessorKey: 'paymentMethod',
+    header: 'Metode',
+    cell: ({ row }) => <Badge variant="outline" className="capitalize whitespace-nowrap">{row.original.paymentMethod}</Badge>,
+  },
+  {
+    accessorKey: 'deliveryMethod',
+    header: 'Tipe',
+    cell: ({ row }) => {
+      const isDelivery = row.original.deliveryMethod === 'delivery'
+      return isDelivery ? (
+        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-800 whitespace-nowrap">
+          <Truck className="h-3 w-3 mr-1" /> Kirim
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="text-muted-foreground whitespace-nowrap">Pickup</Badge>
+      )
+    }
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.original.status
+      return (
+        <Badge 
+          className={cn(
+            'whitespace-nowrap',
+            status === 'completed' 
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' 
+              : status === 'unpaid'
+              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
+          )}
+          variant="outline"
+        >
+          {status === 'completed' ? 'Selesai' : status === 'unpaid' ? 'Belum Lunas' : 'Batal'}
+        </Badge>
+      )
+    }
+  },
+  {
+    accessorKey: 'finalAmount',
+    header: () => <div className="text-right">Total</div>,
+    cell: ({ row }) => {
+      const tx = row.original as any // type casting for fallback properties
+      return (
+        <div className="text-right font-semibold tabular-nums">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger className="cursor-help decoration-muted-foreground/50 underline-offset-4 hover:underline">
+                {formatCurrency(tx.finalAmount)}
+              </TooltipTrigger>
+              <TooltipContent side="left" className="w-48 p-3 font-normal text-foreground bg-popover border shadow-md">
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal:</span>
+                    <span>{formatCurrency(tx.totalAmount || tx.gross_total || 0)}</span>
+                  </div>
+                  {(tx.discountAmount > 0 || tx.discount > 0) && (
+                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                      <span>Diskon:</span>
+                      <span>-{formatCurrency(tx.discountAmount || tx.discount)}</span>
+                    </div>
+                  )}
+                  {(tx.shippingCost > 0 || tx.shipping_cost > 0) && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Ongkir:</span>
+                      <span>+{formatCurrency(tx.shippingCost || tx.shipping_cost)}</span>
+                    </div>
+                  )}
+                  <div className="pt-1.5 mt-1.5 border-t flex justify-between font-semibold">
+                    <span>Total:</span>
+                    <span>{formatCurrency(tx.finalAmount || tx.net_total || 0)}</span>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )
+    }
+  }
+]
+
 export const Route = createFileRoute('/_authenticated/transactions/')({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      search: (search.search as string) || '',
+    }
+  },
   component: TransactionsPage,
 })
 
 function TransactionsPage() {
+  const searchParams = Route.useSearch()
+  
   // Filters state
   const [page, setPage] = useState(1)
   const [dateFrom, setDateFrom] = useState<Date | undefined>()
   const [dateTo, setDateTo] = useState<Date | undefined>()
   const [status, setStatus] = useState<string>('')
   const [cashierId, setCashierId] = useState<string>('')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(searchParams.search)
   
   // Dialog states
   const [selectedTx, setSelectedTx] = useState<any>(null)
-  const [voidingTx, setVoidingTx] = useState<any>(null)
+  
+  // Custom columns that need component state
+  const tableColumns = useMemo(() => {
+    return [
+      ...columns,
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }: { row: any }) => (
+          <div className="text-right">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedTx(row.original)}
+            >
+              Detail
+            </Button>
+          </div>
+        )
+      }
+    ]
+  }, [setSelectedTx])
   
   // Build params
   const params = useMemo<TransactionsParams>(() => ({
@@ -83,18 +227,6 @@ function TransactionsPage() {
   const { data, isLoading } = useTransactions(params)
   const { data: summary } = useTransactionsSummary(summaryParams)
   const { data: cashiers } = useCashiers()
-  const voidTransaction = useVoidTransaction()
-  
-  const handleVoid = async () => {
-    if (!voidingTx) return
-    try {
-      await voidTransaction.mutateAsync(voidingTx.id)
-      toast.success(`Transaction ${voidingTx.number} has been voided`)
-      setVoidingTx(null)
-    } catch (error) {
-      toast.error((error as Error).message || 'Failed to void transaction')
-    }
-  }
   
   const clearFilters = () => {
     setDateFrom(undefined)
@@ -107,11 +239,6 @@ function TransactionsPage() {
   
   const hasActiveFilters = dateFrom || dateTo || status || cashierId || search
   
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
-  }
-
   return (
     <Page>
       <PageHeader fixed>
@@ -244,79 +371,19 @@ function TransactionsPage() {
           )}
         </div>
         
-        {/* Table */}
+        {/* Data Table */}
         <div className="rounded-md border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
-              <tr>
-                <th className="p-4 text-left font-medium">Number</th>
-                <th className="p-4 text-left font-medium">Date</th>
-                <th className="p-4 text-left font-medium">Customer</th>
-                <th className="p-4 text-left font-medium">Cashier</th>
-                <th className="p-4 text-left font-medium">Method</th>
-                <th className="p-4 text-left font-medium">Status</th>
-                <th className="p-4 text-right font-medium">Total</th>
-                <th className="p-4 text-center font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center">
-                    <div className="flex justify-center">
-                      <Loader2 className="animate-spin" />
-                    </div>
-                  </td>
-                </tr>
-              ) : (data?.data || []).length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-12 text-center text-muted-foreground">
-                    No transactions found
-                  </td>
-                </tr>
-              ) : (
-                (data?.data || []).map((tx: any) => (
-                  <tr key={tx.id} className="border-b hover:bg-muted/50 transition-colors">
-                    <td className="p-4 font-mono font-medium">{tx.number}</td>
-                    <td className="p-4 text-muted-foreground">{formatDateTime(tx.date)}</td>
-                    <td className="p-4">{tx.customer?.name || '-'}</td>
-                    <td className="p-4">{tx.cashier?.name || '-'}</td>
-                    <td className="p-4">
-                      <Badge variant="outline" className="capitalize">{tx.paymentMethod}</Badge>
-                    </td>
-                    <td className="p-4">
-                      <Badge variant={tx.status === 'completed' ? 'default' : 'destructive'}>
-                        {tx.status === 'completed' ? 'Completed' : 'Cancelled'}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-right font-medium">{formatCurrency(tx.finalAmount)}</td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setSelectedTx(tx)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {tx.status === 'completed' && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setVoidingTx(tx)}
-                          >
-                            <Ban className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <DataTable
+            columns={tableColumns}
+            data={data?.data || []}
+            isLoading={isLoading}
+            pagination={false} // Disable internal pagination
+          />
         </div>
         
-        {/* Pagination */}
+        {/* Pagination (Server-side) */}
         {data?.pagination && data.pagination.totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between px-2">
             <p className="text-sm text-muted-foreground">
               Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
             </p>
@@ -344,22 +411,11 @@ function TransactionsPage() {
         )}
       </PageBody>
 
-      {/* Receipt Dialog */}
-      <ReceiptDialog 
-        open={!!selectedTx} 
-        onOpenChange={(v: boolean) => !v && setSelectedTx(null)} 
-        transaction={selectedTx} 
-      />
-      
-      {/* Void Confirmation Dialog */}
-      <ConfirmDeleteDialog
-        open={!!voidingTx}
-        onOpenChange={(open) => !open && setVoidingTx(null)}
-        title="Void Transaction"
-        itemName={voidingTx?.number}
-        description="This will cancel the transaction and restore stock to the warehouse. This action cannot be undone."
-        onConfirm={handleVoid}
-        isLoading={voidTransaction.isPending}
+      {/* Transaction Detail Sheet */}
+      <TransactionDetailSheet
+        transaction={selectedTx}
+        open={!!selectedTx}
+        onClose={() => setSelectedTx(null)}
       />
     </Page>
   )

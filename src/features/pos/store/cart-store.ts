@@ -1,54 +1,114 @@
 import { create } from 'zustand'
-import { ApiProduct } from '@/lib/api-types'
 
 export interface CartItem {
-  product: ApiProduct
-  quantity: number
+  productId: string
+  name: string
+  sku: string
   price: number
+  quantity: number
+  image?: string
 }
 
-interface CartState {
-  items: CartItem[]
-  addToCart: (product: ApiProduct) => void
+interface CartStore {
+  // State
+  cart: CartItem[]
+  selectedCustomer: any | null
+  paymentMethod: 'cash' | 'qris' | 'transfer' | 'debt'
+  cashAmount: string
+  discount: string
+  notes: string
+  // Delivery
+  deliveryMethod: 'pickup' | 'delivery'
+  shippingCost: string
+  courierName: string
+  shippingAddress: string
+
+  // Actions
+  addToCart: (product: any) => void
+  updateQuantity: (productId: string, delta: number) => void
   removeFromCart: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
   clearCart: () => void
-  getTotal: () => number
+  
+  setSelectedCustomer: (customer: any | null) => void
+  setPaymentMethod: (method: 'cash' | 'qris' | 'transfer' | 'debt') => void
+  setCashAmount: (amount: string) => void
+  setDiscount: (discount: string) => void
+  setNotes: (notes: string) => void
+  setDeliveryMethod: (method: 'pickup' | 'delivery') => void
+  setShippingCost: (cost: string) => void
+  setCourierName: (name: string) => void
+  setShippingAddress: (address: string) => void
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
-  items: [],
-  addToCart: (product) => {
-    const items = get().items
-    const existing = items.find((i) => i.product.id === product.id)
+export const useCartStore = create<CartStore>((set) => ({
+  cart: [],
+  selectedCustomer: null,
+  paymentMethod: 'cash',
+  cashAmount: '',
+  discount: '',
+  notes: '',
+  deliveryMethod: 'pickup',
+  shippingCost: '',
+  courierName: '',
+  shippingAddress: '',
+
+  addToCart: (product) => set((state) => {
+    const existing = state.cart.find(item => item.productId === product.id)
     if (existing) {
-      set({
-        items: items.map((i) =>
-          i.product.id === product.id
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
-        ),
-      })
-    } else {
-      set({
-        items: [...items, { product, quantity: 1, price: Number(product.sellingPrice) }],
-      })
+      return {
+        cart: state.cart.map(item =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      }
     }
-  },
-  removeFromCart: (productId) => {
-    set({ items: get().items.filter((i) => i.product.id !== productId) })
-  },
-  updateQuantity: (productId, quantity) => {
-    if (quantity <= 0) {
-      get().removeFromCart(productId)
-      return
+    return {
+      cart: [...state.cart, {
+        productId: product.id,
+        name: product.name,
+        sku: product.sku,
+        price: Number(product.sellingPrice),
+        quantity: 1,
+        image: product.image,
+      }]
     }
-    set({
-      items: get().items.map((i) =>
-        i.product.id === productId ? { ...i, quantity } : i
-      ),
+  }),
+
+  updateQuantity: (productId, delta) => set((state) => ({
+    cart: state.cart.map(item => {
+      if (item.productId === productId) {
+        const newQty = Math.max(1, item.quantity + delta)
+        return { ...item, quantity: newQty }
+      }
+      return item
     })
-  },
-  clearCart: () => set({ items: [] }),
-  getTotal: () => get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+  })),
+
+  removeFromCart: (productId) => set((state) => ({
+    cart: state.cart.filter(item => item.productId !== productId)
+  })),
+
+  clearCart: () => set({
+    cart: [],
+    selectedCustomer: null,
+    paymentMethod: 'cash',
+    cashAmount: '',
+    discount: '',
+    notes: '',
+    deliveryMethod: 'pickup',
+    shippingCost: '',
+    courierName: '',
+    shippingAddress: '',
+  }),
+
+  setSelectedCustomer: (customer) => set({ selectedCustomer: customer }),
+  setPaymentMethod: (method) => set({ paymentMethod: method }),
+  setCashAmount: (amount) => set({ cashAmount: amount }),
+  setDiscount: (discount) => set({ discount: discount }),
+  setNotes: (notes) => set({ notes: notes }),
+  setDeliveryMethod: (method) => set({ deliveryMethod: method }),
+  setShippingCost: (cost) => set({ shippingCost: cost }),
+  setCourierName: (name) => set({ courierName: name }),
+  setShippingAddress: (address) => set({ shippingAddress: address }),
 }))
